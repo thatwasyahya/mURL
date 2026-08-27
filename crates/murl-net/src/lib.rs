@@ -1,4 +1,8 @@
-//! The HTTPS manifest fetcher.
+//! # murl-net
+//!
+//! The HTTPS manifest fetcher — the one place mURL talks to the network.
+//! It lives in its own crate so the CLI and the daemon share a single
+//! hardened implementation rather than each growing their own.
 //!
 //! Enforces, per the specification and threat model:
 //!
@@ -23,10 +27,27 @@ use murl_core::error::{Error, Result};
 use murl_core::fetch::RemoteFetcher;
 use murl_core::limits::Limits;
 
-use crate::logger;
+/// Optional trace sink, so an embedder can log fetches without this crate
+/// depending on a logging framework.
+pub type TraceFn = fn(&str);
 
 #[derive(Debug, Default)]
-pub struct HttpsFetcher;
+pub struct HttpsFetcher {
+    trace: Option<TraceFn>,
+}
+
+impl HttpsFetcher {
+    /// A fetcher that traces each request through `trace`.
+    pub fn with_trace(trace: TraceFn) -> HttpsFetcher {
+        HttpsFetcher { trace: Some(trace) }
+    }
+
+    fn trace(&self, message: &str) {
+        if let Some(f) = self.trace {
+            f(message);
+        }
+    }
+}
 
 impl RemoteFetcher for HttpsFetcher {
     fn fetch(&self, url: &str, limits: &Limits) -> Result<Vec<u8>> {
@@ -37,7 +58,7 @@ impl RemoteFetcher for HttpsFetcher {
             )));
         }
 
-        logger::debug(&format!("fetching {url}"));
+        self.trace(&format!("fetching {url}"));
         let agent = ureq::AgentBuilder::new()
             .timeout(Duration::from_secs(limits.fetch_timeout_secs))
             .redirects(limits.max_redirects)
@@ -179,7 +200,7 @@ mod tests {
 
     #[test]
     fn refuses_non_loopback_http() {
-        let f = HttpsFetcher;
+        let f = HttpsFetcher::default();
         let err = f
             .fetch("http://example.com/x", &Limits::default())
             .unwrap_err();

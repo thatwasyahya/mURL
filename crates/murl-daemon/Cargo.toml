@@ -1,6 +1,6 @@
 [package]
-name = "murl-cli"
-description = "murl — the reference CLI for mURL (Multi-Resource Uniform Locator): create, validate, inspect, resolve, sign, and open mURLs."
+name = "murl-daemon"
+description = "murl-daemon — a resident mURL resolver providing a persistent consent surface, warm cache, and single-instance activation over a user-private local socket."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,20 +8,20 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 
+[lib]
+name = "murl_daemon"
+path = "src/lib.rs"
+
 [[bin]]
-name = "murl"
+name = "murl-daemon"
 path = "src/main.rs"
 
 [dependencies]
 murl-core = { workspace = true }
 murl-net = { workspace = true }
-murl-daemon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 clap = { workspace = true }
-
-[dev-dependencies]
-serde_json = { workspace = true }
 
 [lints]
 workspace = true

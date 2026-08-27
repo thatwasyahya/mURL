@@ -11,7 +11,7 @@
 mod commands;
 mod consent;
 mod ctx;
-mod httpfetch;
+mod daemon_client;
 mod launcher;
 mod logger;
 mod paths;
@@ -48,6 +48,14 @@ struct Cli {
     /// Increase log verbosity (-v info, -vv debug); logs go to stderr
     #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     verbose: u8,
+
+    /// Require the daemon for `open`: fail rather than resolving in-process
+    #[arg(long, global = true, conflicts_with = "no_daemon")]
+    daemon: bool,
+
+    /// Never use the daemon; always resolve in-process
+    #[arg(long, global = true)]
+    no_daemon: bool,
 
     #[command(subcommand)]
     command: Command,
@@ -298,18 +306,31 @@ fn run(cli: &Cli) -> murl_core::Result<i32> {
             allow_dangerous,
             only,
             skip,
-        } => commands::open::run(
-            &app,
-            target,
-            commands::open::OpenOptions {
-                dry_run: *dry_run,
-                yes: *yes,
-                allow_sensitive: *allow_sensitive,
-                allow_dangerous: *allow_dangerous,
-                only: only.clone(),
-                skip: skip.clone(),
-            },
-        ),
+        } => {
+            // The daemon is an optimization of the consent surface, never a
+            // dependency: try it, fall back silently, unless the user pinned
+            // the choice with --daemon / --no-daemon.
+            let mode = daemon_client::Mode::from_flags(cli.daemon, cli.no_daemon);
+            if !*dry_run {
+                if let daemon_client::Outcome::Handled(code) =
+                    daemon_client::try_open(&app, target, only, mode)?
+                {
+                    return Ok(code);
+                }
+            }
+            commands::open::run(
+                &app,
+                target,
+                commands::open::OpenOptions {
+                    dry_run: *dry_run,
+                    yes: *yes,
+                    allow_sensitive: *allow_sensitive,
+                    allow_dangerous: *allow_dangerous,
+                    only: only.clone(),
+                    skip: skip.clone(),
+                },
+            )
+        }
         Command::Name(sub) => match sub {
             NameCmd::Add { name, file } => commands::name::add(&app, name, file),
             NameCmd::List => commands::name::list(&app),

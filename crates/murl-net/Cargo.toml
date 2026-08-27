@@ -1,0 +1,16 @@
+[package]
+name = "murl-net"
+description = "The hardened HTTPS manifest fetcher for mURL: TLS-only, zero redirects, size-capped reads, and private-address filtering at DNS resolution time."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+murl-core = { workspace = true }
+ureq = { workspace = true }
+
+[lints]
+workspace = true

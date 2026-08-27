@@ -436,9 +436,10 @@ version = "0.2.0"
 dependencies = [
  "clap",
  "murl-core",
+ "murl-daemon",
+ "murl-net",
  "serde",
  "serde_json",
- "ureq",
 ]
 
 [[package]]
@@ -452,6 +453,25 @@ dependencies = [
  "serde_json",
  "sha2",
  "thiserror",
+]
+
+[[package]]
+name = "murl-daemon"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "murl-core",
+ "murl-net",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "murl-net"
+version = "0.2.0"
+dependencies = [
+ "murl-core",
+ "ureq",
 ]
 
 [[package]]

@@ -18,9 +18,9 @@ use murl_core::resolver::{Origin, Resolution, Resolver};
 use murl_core::time::SystemClock;
 use murl_core::trust::TrustStore;
 
-use crate::httpfetch::HttpsFetcher;
 use crate::logger;
 use crate::paths::{home_dir, AppPaths};
+use murl_net::HttpsFetcher;
 
 /// Optional user configuration, `<config>/config.json`.
 #[derive(Debug, Default, Deserialize)]
@@ -134,7 +134,7 @@ impl App {
     /// Run `f` with a fully wired resolver. The fetcher and the trust borrow
     /// live exactly as long as the closure.
     pub fn with_resolver<T>(&self, f: impl FnOnce(&Resolver<'_>) -> Result<T>) -> Result<T> {
-        let fetcher = HttpsFetcher;
+        let fetcher = HttpsFetcher::with_trace(logger::debug);
         let trust = self.trust.borrow();
         let remote: Option<&dyn RemoteFetcher> = if self.offline { None } else { Some(&fetcher) };
         let resolver = Resolver {
