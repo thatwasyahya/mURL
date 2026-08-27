@@ -5,6 +5,7 @@
 pub mod bundle_cmd;
 pub mod cache_cmd;
 pub mod create;
+pub mod detect;
 pub mod handler_cmd;
 pub mod inspect;
 pub mod keys;

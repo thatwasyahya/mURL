@@ -258,6 +258,8 @@ enum HandlerCmd {
         #[arg(trailing_var_arg = true, required = true)]
         argv: Vec<String>,
     },
+    /// Suggest handlers for installed programs (registers nothing)
+    Detect,
     /// List configured handlers
     List,
     /// Remove a custom-kind handler
@@ -377,6 +379,7 @@ fn run(cli: &Cli) -> murl_core::Result<i32> {
             HandlerCmd::Register { kind, argv } => {
                 commands::handler_cmd::register(&app, kind, argv)
             }
+            HandlerCmd::Detect => commands::detect::run(&app),
             HandlerCmd::List => commands::handler_cmd::list(&app),
             HandlerCmd::Remove { kind } => commands::handler_cmd::remove(&app, kind),
         },
