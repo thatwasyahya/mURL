@@ -28,7 +28,7 @@ use crate::fetch::{well_known_url, LocalStore, RemoteFetcher};
 use crate::kind::Kind;
 use crate::limits::Limits;
 use crate::manifest::{Manifest, ResourceDoc};
-use crate::murl::{Murl, VersionTag};
+use crate::murl::{Murl, SelectorItem, VersionTag};
 use crate::policy::{classify, Decision, EvalContext, Policy, Tier};
 use crate::time::{parse_rfc3339_utc, Clock};
 use crate::trust::{check_integrity, verify_manifest, TrustStatus, TrustStore};
@@ -69,9 +69,15 @@ pub struct ResolvedNode {
     pub identity: Option<String>,
     pub origin: Origin,
     pub manifest: Manifest,
+    /// The exact bytes the manifest was parsed from. Kept because signed
+    /// manifests must survive re-serialization byte-for-byte (export,
+    /// integrity pinning).
+    pub raw_bytes: Vec<u8>,
     pub trust: TrustStatus,
     pub depth: u32,
     pub expired: bool,
+    /// True when `notBefore` lies in the future.
+    pub premature: bool,
 }
 
 /// One dispatchable resource in the flattened plan.
@@ -117,6 +123,7 @@ impl Resolution {
             let ctx = EvalContext {
                 trust: node.trust.clone(),
                 manifest_expired: node.expired,
+                manifest_premature: node.premature,
                 remote_origin: node.origin.is_remote(),
             };
             pr.decision = Some(policy.evaluate(&pr.kind, pr.tier, &ctx));
@@ -136,6 +143,7 @@ impl Resolution {
                 "trust": n.trust,
                 "depth": n.depth,
                 "expired": n.expired,
+                "notYetValid": n.premature,
             })).collect::<Vec<_>>(),
             "resources": self.resources.iter().map(|pr| json!({
                 "id": pr.resource.id,
@@ -217,26 +225,58 @@ impl<'a> Resolver<'a> {
         self.finish(st, None)
     }
 
-    fn finish(&self, st: State, selector: Option<String>) -> Result<Resolution> {
+    fn finish(&self, st: State, selector: Option<Vec<SelectorItem>>) -> Result<Resolution> {
         let mut resolution = Resolution {
             nodes: st.nodes,
             resources: st.resources,
             warnings: st.warnings,
-            selector: selector.clone(),
+            selector: None,
         };
-        if let Some(sel) = &selector {
-            let root_has = resolution.nodes[0]
-                .manifest
-                .doc
-                .resources
-                .iter()
-                .any(|r| &r.id == sel);
-            if !root_has {
-                return Err(Error::NotFound(format!(
-                    "selector `#{sel}` does not match any resource id in the root manifest"
-                )));
+        if let Some(items) = &selector {
+            // Strictness rule (spec §6.7): every selector item must match
+            // something. A selector that selects nothing is an error, never
+            // an empty success — silence is how typos become confusion.
+            for item in items {
+                let matched = match item {
+                    SelectorItem::Id(id) => resolution.nodes[0]
+                        .manifest
+                        .doc
+                        .resources
+                        .iter()
+                        .any(|r| &r.id == id),
+                    SelectorItem::Role(role) => resolution
+                        .resources
+                        .iter()
+                        .any(|pr| pr.resource.role.as_deref() == Some(role)),
+                    SelectorItem::Tag(tag) => resolution
+                        .resources
+                        .iter()
+                        .any(|pr| pr.resource.tags.iter().any(|t| t == tag)),
+                };
+                if !matched {
+                    return Err(Error::NotFound(format!(
+                        "selector item `{item}` matches nothing in the resolved destination"
+                    )));
+                }
             }
-            resolution.resources.retain(|pr| &pr.root_anchor == sel);
+            // Union semantics: keep a resource if ANY item claims it.
+            // Id items address root-manifest resources (including a murl
+            // container's spliced children, via the anchor); role/tag items
+            // address the flattened plan directly.
+            resolution.resources.retain(|pr| {
+                items.iter().any(|item| match item {
+                    SelectorItem::Id(id) => &pr.root_anchor == id,
+                    SelectorItem::Role(role) => pr.resource.role.as_deref() == Some(role),
+                    SelectorItem::Tag(tag) => pr.resource.tags.iter().any(|t| t == tag),
+                })
+            });
+            resolution.selector = Some(
+                items
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(","),
+            );
         }
         Ok(resolution)
     }
@@ -412,17 +452,27 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        // Expiry.
+        // Validity window. Formats were already validated.
+        let now = self.clock.now_epoch();
         let expired = match &manifest.doc.expires {
             Some(exp) => {
-                // Format already validated.
-                let when = parse_rfc3339_utc(exp).unwrap_or(0);
-                let expired = when <= self.clock.now_epoch();
+                let expired = parse_rfc3339_utc(exp).unwrap_or(0) <= now;
                 if expired {
                     st.warnings
                         .push(format!("{label}: manifest expired at {exp}"));
                 }
                 expired
+            }
+            None => false,
+        };
+        let premature = match &manifest.doc.not_before {
+            Some(nb) => {
+                let premature = now < parse_rfc3339_utc(nb).unwrap_or(0);
+                if premature {
+                    st.warnings
+                        .push(format!("{label}: manifest is not valid before {nb}"));
+                }
+                premature
             }
             None => false,
         };
@@ -432,9 +482,11 @@ impl<'a> Resolver<'a> {
             identity: murl.map(Murl::identity),
             origin,
             manifest: manifest.clone(),
+            raw_bytes: bytes.to_vec(),
             trust,
             depth,
             expired,
+            premature,
         });
 
         let order =

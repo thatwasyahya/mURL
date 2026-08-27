@@ -71,6 +71,28 @@ enum Command {
         /// Overwrite an existing file
         #[arg(long)]
         force: bool,
+        /// Build the manifest by answering prompts
+        #[arg(short, long)]
+        interactive: bool,
+    },
+    /// Export a destination and everything it composes as one bundle file
+    Export {
+        /// A manifest file path or an mURL
+        target: String,
+        /// Output file (default: derived from the name; `-` for stdout)
+        #[arg(short, long)]
+        output: Option<String>,
+    },
+    /// Verify a bundle and install its manifests into the local namespace
+    Import {
+        /// The bundle file
+        file: String,
+        /// Local name for the bundle's root destination
+        #[arg(long = "as")]
+        as_name: Option<String>,
+        /// Overwrite local names that already exist
+        #[arg(long)]
+        force: bool,
     },
     /// Validate a manifest (file path or mURL) against the specification
     Validate {
@@ -249,7 +271,22 @@ fn run(cli: &Cli) -> murl_core::Result<i32> {
             name,
             output,
             force,
-        } => commands::create::run(&app, name.as_deref(), output.as_deref(), *force),
+            interactive,
+        } => commands::create::run(
+            &app,
+            name.as_deref(),
+            output.as_deref(),
+            *force,
+            *interactive,
+        ),
+        Command::Export { target, output } => {
+            commands::bundle_cmd::export(&app, target, output.as_deref())
+        }
+        Command::Import {
+            file,
+            as_name,
+            force,
+        } => commands::bundle_cmd::import(&app, file, as_name.as_deref(), *force),
         Command::Validate { target } => commands::validate::run(&app, target),
         Command::Inspect { target } => commands::inspect::run(&app, target),
         Command::Resolve { target } => commands::resolve::run(&app, target),

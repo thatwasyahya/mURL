@@ -1,0 +1,12 @@
+{
+  "murlVersion": "0.2",
+  "name": "Bad pin",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "murl",
+      "target": "murl://local/x",
+      "integrity": "sha256-short"
+    }
+  ]
+}

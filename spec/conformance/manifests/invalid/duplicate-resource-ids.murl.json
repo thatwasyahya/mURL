@@ -1,0 +1,16 @@
+{
+  "murlVersion": "0.2",
+  "name": "Dup ids",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/1"
+    },
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/2"
+    }
+  ]
+}

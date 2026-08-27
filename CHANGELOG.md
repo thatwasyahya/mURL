@@ -6,6 +6,42 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-08-27
+
+Format hardening. The manifest format is now strict enough to freeze, and
+independent implementations have something to test against.
+
+### Added
+
+* **Conformance suite** (`spec/conformance/`): 14 valid + 34 invalid
+  manifests and 79 mURL vectors, with a documented contract and a Rust
+  harness (`crates/murl-core/tests/conformance.rs`) other implementations
+  can copy.
+* **JSON Schema** for the manifest (`spec/murl-manifest.schema.json`),
+  explicitly descriptive — the reference validator stays normative.
+* **`notBefore`** manifest member: a validity floor to pair with `expires`.
+  Outside either bound, only SAFE resources reach a prompt.
+* **Selector extensions**: multiple comma-separated items with union
+  semantics, plus `role=` and `tag=` forms (`#docs,role=monitoring`).
+  Every item must match something or the resolution fails.
+* **`murl export` / `murl import`**: portable bundles carrying a
+  destination and every manifest it composes as verbatim bytes with
+  integrity hashes. Imports verify, then install into the *local*
+  namespace — a bundle can never claim another authority.
+* **`murl create --interactive`**: build a manifest by answering prompts,
+  with per-answer validation and risk tiers shown as resources are added.
+
+### Changed
+
+* **Duplicate JSON members are now invalid** at every nesting level and
+  rejected at parse time (spec §5.1). This closes threat T-15 at the format
+  level rather than relying on a shared parser.
+* Numbers must be integers *everywhere*, including inside free-form `meta`;
+  non-integers are validation errors (they would be unsignable under MCF-1).
+* `murlVersion` is now `"0.2"` for writers; `"0.1"` remains accepted.
+* Identifier grammars (id/role/tag) are shared between the selector parser
+  and the manifest validator, so the two cannot drift.
+
 ## [0.1.0] — 2026-08-27
 
 Initial public release: the mURL primitive, end to end.

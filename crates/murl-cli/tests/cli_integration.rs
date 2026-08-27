@@ -345,6 +345,123 @@ fn offline_uncached_remote_fails() {
 }
 
 #[test]
+fn export_import_roundtrip_across_stores() {
+    let env = TestEnv::new("bundle");
+    // A destination that composes a nested one, so the bundle must carry
+    // both manifests.
+    env.write(
+        "child.murl.json",
+        r#"{"murlVersion":"0.2","id":"murl://local/child","name":"Child",
+            "resources":[{"id":"wiki","kind":"https","target":"https://wiki.example/x"}]}"#,
+    );
+    env.write(
+        "parent.murl.json",
+        r#"{"murlVersion":"0.2","id":"murl://local/parent","name":"Parent",
+            "resources":[
+              {"id":"docs","kind":"https","target":"https://docs.example/x"},
+              {"id":"child","kind":"murl","target":"murl://local/child"}]}"#,
+    );
+    assert!(env
+        .run(&["name", "add", "child", "child.murl.json"])
+        .status
+        .success());
+    assert!(env
+        .run(&["name", "add", "parent", "parent.murl.json"])
+        .status
+        .success());
+
+    let out = env.run(&[
+        "--json",
+        "export",
+        "murl://local/parent",
+        "-o",
+        "b.murlbundle.json",
+    ]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let v = json(&out);
+    assert_eq!(v["manifests"], 2);
+    assert_eq!(v["root"], "murl://local/parent");
+
+    // Import into a *different* environment: nothing is shared but the file.
+    let fresh = TestEnv::new("bundle-import");
+    std::fs::copy(
+        env.root.join("work/b.murlbundle.json"),
+        fresh.root.join("work/b.murlbundle.json"),
+    )
+    .unwrap();
+    let out = fresh.run(&["import", "b.murlbundle.json"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+
+    let out = fresh.run(&["name", "list"]);
+    let listed = stdout(&out);
+    assert!(listed.contains("murl://local/parent"), "{listed}");
+    assert!(listed.contains("murl://local/child"), "{listed}");
+
+    // And the imported destination resolves, nested splice included.
+    let out = fresh.run(&["--json", "resolve", "murl://local/parent"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    let v = json(&out);
+    assert_eq!(v["resources"].as_array().unwrap().len(), 2);
+
+    // Re-importing without --force refuses to clobber.
+    let out = fresh.run(&["import", "b.murlbundle.json"]);
+    assert_eq!(out.status.code(), Some(2), "{}", stderr(&out));
+    let out = fresh.run(&["import", "b.murlbundle.json", "--force"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+}
+
+#[test]
+fn import_rejects_tampered_bundle() {
+    let env = TestEnv::new("bundle-tamper");
+    env.write("m.murl.json", VALID_MANIFEST);
+    env.run(&["name", "add", "t", "m.murl.json"]);
+    assert!(env
+        .run(&["export", "murl://local/t", "-o", "b.murlbundle.json"])
+        .status
+        .success());
+
+    let path = env.root.join("work/b.murlbundle.json");
+    let text = std::fs::read_to_string(&path).unwrap();
+    let mut bundle: serde_json::Value = serde_json::from_str(&text).unwrap();
+    // Swap the payload but keep the recorded integrity hash.
+    bundle["entries"][0]["bytes"] = serde_json::Value::String(base64_encode(
+        br#"{"murlVersion":"0.2","name":"Evil","resources":[{"id":"a","kind":"terminal","target":"/home/u"}]}"#,
+    ));
+    std::fs::write(&path, serde_json::to_vec_pretty(&bundle).unwrap()).unwrap();
+
+    let out = env.run(&["import", "b.murlbundle.json", "--as", "evil"]);
+    assert_ne!(out.status.code(), Some(0));
+    assert!(stderr(&out).contains("integrity"), "{}", stderr(&out));
+}
+
+/// Minimal standard base64 encoder, so the test needs no extra dependency.
+fn base64_encode(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::new();
+    for chunk in bytes.chunks(3) {
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
+        let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
+        out.push(ALPHABET[(n >> 18) as usize & 63] as char);
+        out.push(ALPHABET[(n >> 12) as usize & 63] as char);
+        out.push(if chunk.len() > 1 {
+            ALPHABET[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            ALPHABET[n as usize & 63] as char
+        } else {
+            '='
+        });
+    }
+    out
+}
+
+#[test]
 fn os_status_runs_everywhere() {
     let env = TestEnv::new("os-status");
     let out = env.run(&["os", "status"]);

@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "Plain http",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "http://example.com/x"
+    }
+  ]
+}

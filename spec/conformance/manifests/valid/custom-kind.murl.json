@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "Custom kind",
+  "resources": [
+    {
+      "id": "editor",
+      "kind": "custom:vscode",
+      "target": "vscode://file/home/u/project"
+    }
+  ]
+}

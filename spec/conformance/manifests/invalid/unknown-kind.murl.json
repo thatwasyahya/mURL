@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "Bad kind",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "exec",
+      "target": "/bin/sh"
+    }
+  ]
+}

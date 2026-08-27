@@ -1,0 +1,29 @@
+{
+  "murlVersion": "0.2",
+  "name": "Local resources",
+  "resources": [
+    {
+      "id": "home",
+      "kind": "dir",
+      "target": "~/projects/demo"
+    },
+    {
+      "id": "abs",
+      "kind": "file",
+      "target": "/etc/hostname"
+    },
+    {
+      "id": "win",
+      "kind": "file",
+      "target": "C:/Users/u/doc.pdf"
+    },
+    {
+      "id": "term",
+      "kind": "terminal",
+      "target": "~/projects/demo",
+      "dependsOn": [
+        "home"
+      ]
+    }
+  ]
+}

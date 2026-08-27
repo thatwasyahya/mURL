@@ -2,6 +2,7 @@
 //! stays thin: parsing/validation/resolution/policy/dispatch all live in
 //! `murl-core`; commands wire them to arguments, output, and exit codes.
 
+pub mod bundle_cmd;
 pub mod cache_cmd;
 pub mod create;
 pub mod handler_cmd;

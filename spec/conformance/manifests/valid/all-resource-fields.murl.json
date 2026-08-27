@@ -1,0 +1,36 @@
+{
+  "murlVersion": "0.2",
+  "name": "Everything",
+  "id": "murl://local/everything",
+  "description": "Every optional member populated at least once.",
+  "version": "1.4.2",
+  "resources": [
+    {
+      "id": "base",
+      "kind": "https",
+      "target": "https://example.com/base",
+      "label": "Base",
+      "role": "source",
+      "required": true,
+      "order": 10,
+      "tags": [
+        "dev",
+        "primary"
+      ]
+    },
+    {
+      "id": "child",
+      "kind": "murl",
+      "target": "murl://local/child",
+      "integrity": "sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+      "dependsOn": [
+        "base"
+      ],
+      "order": 20,
+      "meta": {
+        "team": "platform",
+        "priority": 1
+      }
+    }
+  ]
+}

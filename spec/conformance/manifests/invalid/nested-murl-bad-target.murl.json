@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "Bad nested",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "murl",
+      "target": "not-a-murl"
+    }
+  ]
+}

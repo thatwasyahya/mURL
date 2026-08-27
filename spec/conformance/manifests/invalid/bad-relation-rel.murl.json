@@ -1,0 +1,23 @@
+{
+  "murlVersion": "0.2",
+  "name": "Bad rel",
+  "relations": [
+    {
+      "from": "a",
+      "rel": "Documented_By",
+      "to": "b"
+    }
+  ],
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a"
+    },
+    {
+      "id": "b",
+      "kind": "https",
+      "target": "https://example.com/b"
+    }
+  ]
+}

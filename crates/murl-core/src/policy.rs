@@ -105,6 +105,8 @@ impl Default for Policy {
 pub struct EvalContext {
     pub trust: TrustStatus,
     pub manifest_expired: bool,
+    /// True when the manifest's `notBefore` lies in the future.
+    pub manifest_premature: bool,
     /// True when the manifest was fetched from a remote authority (as opposed
     /// to the local store or an explicit local file).
     pub remote_origin: bool,
@@ -134,6 +136,9 @@ impl Policy {
         if ctx.manifest_expired && tier != Tier::Safe {
             return Decision::Deny("manifest is expired".into());
         }
+        if ctx.manifest_premature && tier != Tier::Safe {
+            return Decision::Deny("manifest is not yet valid (notBefore)".into());
+        }
 
         let mode = match tier {
             Tier::Safe => self.safe,
@@ -150,6 +155,9 @@ impl Policy {
         }
         if ctx.manifest_expired {
             reasons.push("manifest is expired".into());
+        }
+        if ctx.manifest_premature {
+            reasons.push("manifest is not yet valid (notBefore)".into());
         }
         if ctx.remote_origin && kind.is_filesystem() {
             match self.remote_filesystem_refs {
@@ -185,8 +193,26 @@ mod tests {
         EvalContext {
             trust,
             manifest_expired: expired,
+            manifest_premature: false,
             remote_origin: remote,
         }
+    }
+
+    #[test]
+    fn premature_blocks_non_safe() {
+        let p = Policy::default();
+        let ctx = EvalContext {
+            trust: TrustStatus::Local,
+            manifest_expired: false,
+            manifest_premature: true,
+            remote_origin: false,
+        };
+        let d = p.evaluate(&Kind::File, Tier::Sensitive, &ctx);
+        assert!(matches!(d, Decision::Deny(_)));
+        let d = p.evaluate(&Kind::Https, Tier::Safe, &ctx);
+        assert!(
+            matches!(d, Decision::Prompt(ref r) if r.iter().any(|s| s.contains("not yet valid")))
+        );
     }
 
     #[test]

@@ -4,7 +4,7 @@ members = ["crates/murl-core", "crates/murl-cli"]
 exclude = ["fuzz"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.75"
 license = "MIT OR Apache-2.0"
@@ -15,7 +15,7 @@ keywords = ["murl", "uri", "resolver", "workspace", "addressing"]
 categories = ["command-line-utilities", "os"]
 
 [workspace.dependencies]
-murl-core = { path = "crates/murl-core", version = "0.1.0" }
+murl-core = { path = "crates/murl-core", version = "0.2.0" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

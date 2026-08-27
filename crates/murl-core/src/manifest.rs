@@ -22,8 +22,10 @@ use crate::limits::Limits;
 use crate::murl::Murl;
 use crate::time::parse_rfc3339_utc;
 
-/// The manifest spec version this implementation reads and writes.
-pub const SUPPORTED_MURL_VERSION: &str = "0.1";
+/// The format version this implementation writes.
+pub const SUPPORTED_MURL_VERSION: &str = "0.2";
+/// Format versions this implementation accepts (0.2 is additive over 0.1).
+pub const ACCEPTED_MURL_VERSIONS: &[&str] = &["0.1", "0.2"];
 
 pub const MAX_RESOURCES_PER_MANIFEST: usize = 64;
 pub const MAX_NAME_LEN: usize = 120;
@@ -62,6 +64,10 @@ pub struct ManifestDoc {
     /// Manifest content version (dotted integers, e.g. `"1.4.2"`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
+    /// Strict UTC timestamp before which the manifest must not be used.
+    /// With `expires`, bounds the replay window of a captured manifest.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub not_before: Option<String>,
     /// Strict UTC timestamp after which the manifest should not be used.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expires: Option<String>,
@@ -199,7 +205,10 @@ impl Manifest {
                 limits.max_manifest_bytes
             )));
         }
-        let raw: Value = serde_json::from_slice(bytes)?;
+        // Strict parse: duplicate object members are invalid (spec §5.1,
+        // threat T-15) and fail here, before a Value exists.
+        let raw: Value = crate::json::from_slice_strict(bytes)
+            .map_err(|e| Error::Manifest(format!("invalid JSON: {e}")))?;
         if !raw.is_object() {
             return Err(Error::Manifest(
                 "top-level JSON value must be an object".into(),
@@ -216,12 +225,13 @@ impl Manifest {
         let mut rep = ValidationReport::default();
         let d = &self.doc;
 
-        if d.murl_version != SUPPORTED_MURL_VERSION {
+        if !ACCEPTED_MURL_VERSIONS.contains(&d.murl_version.as_str()) {
             rep.error(
                 "/murlVersion",
                 format!(
-                    "unsupported version `{}` (this implementation supports `{}`)",
-                    d.murl_version, SUPPORTED_MURL_VERSION
+                    "unsupported version `{}` (this implementation accepts {})",
+                    d.murl_version,
+                    ACCEPTED_MURL_VERSIONS.join(", ")
                 ),
             );
         }
@@ -273,12 +283,53 @@ impl Manifest {
                 rep.error("/expires", e);
             }
         }
+        if let Some(nb) = &d.not_before {
+            if let Err(e) = parse_rfc3339_utc(nb) {
+                rep.error("/notBefore", e);
+            }
+        }
+        if let (Some(nb), Some(exp)) = (&d.not_before, &d.expires) {
+            if let (Ok(nb_t), Ok(exp_t)) = (parse_rfc3339_utc(nb), parse_rfc3339_utc(exp)) {
+                if nb_t >= exp_t {
+                    rep.error("/notBefore", "must be strictly before /expires");
+                }
+            }
+        }
 
         self.validate_resources(&mut rep);
         self.validate_relations(&mut rep);
         self.validate_signature_shape(&mut rep);
         self.validate_unknown_members(&mut rep);
+        self.validate_numbers(&mut rep);
         rep
+    }
+
+    /// Spec §5.1: every number in a manifest MUST be an integer within
+    /// i64/u64. Floats anywhere — including inside `meta` — would fall
+    /// outside MCF-1 and make the document unsignable; they are format
+    /// errors, not quirks.
+    fn validate_numbers(&self, rep: &mut ValidationReport) {
+        fn walk(value: &Value, path: &str, rep: &mut ValidationReport) {
+            match value {
+                Value::Number(n) => {
+                    if n.as_i64().is_none() && n.as_u64().is_none() {
+                        rep.error(path.to_owned(), format!("non-integer number `{n}`"));
+                    }
+                }
+                Value::Array(items) => {
+                    for (i, item) in items.iter().enumerate() {
+                        walk(item, &format!("{path}/{i}"), rep);
+                    }
+                }
+                Value::Object(map) => {
+                    for (k, v) in map {
+                        walk(v, &format!("{path}/{k}"), rep);
+                    }
+                }
+                _ => {}
+            }
+        }
+        walk(&self.raw, "", rep);
     }
 
     fn validate_resources(&self, rep: &mut ValidationReport) {
@@ -370,12 +421,7 @@ impl Manifest {
                 rep.error(p("tags"), format!("at most {MAX_TAGS} tags"));
             }
             for t in &r.tags {
-                if t.is_empty()
-                    || t.len() > MAX_TAG_LEN
-                    || !t
-                        .bytes()
-                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
-                {
+                if !is_valid_tag(t) {
                     rep.error(
                         p("tags"),
                         format!("tag `{t}` must match [a-z0-9-]{{1,{MAX_TAG_LEN}}}"),
@@ -489,6 +535,7 @@ impl Manifest {
             "name",
             "description",
             "version",
+            "notBefore",
             "expires",
             "resources",
             "relations",
@@ -553,32 +600,10 @@ impl Manifest {
     }
 }
 
-/// Resource ids: `[a-z0-9][a-z0-9_-]{0,63}`.
-pub fn is_valid_resource_id(s: &str) -> bool {
-    !s.is_empty()
-        && s.len() <= 64
-        && s.bytes().enumerate().all(|(i, b)| {
-            let alnum = b.is_ascii_lowercase() || b.is_ascii_digit();
-            if i == 0 {
-                alnum
-            } else {
-                alnum || b == b'-' || b == b'_'
-            }
-        })
-}
-
-fn is_valid_role(s: &str) -> bool {
-    !s.is_empty()
-        && s.len() <= 32
-        && s.bytes().enumerate().all(|(i, b)| {
-            let alnum = b.is_ascii_lowercase() || b.is_ascii_digit();
-            if i == 0 {
-                alnum
-            } else {
-                alnum || b == b'-'
-            }
-        })
-}
+// Identifier grammars are shared with the selector parser (crate::grammar)
+// so the two can never drift.
+pub use crate::grammar::is_valid_resource_id;
+use crate::grammar::{is_valid_role, is_valid_tag};
 
 fn is_valid_integrity(s: &str) -> bool {
     s.strip_prefix("sha256-").is_some_and(|b64| {
@@ -816,6 +841,66 @@ mod tests {
         let m = parse(&minimal(
             r#"{"id":"team","kind":"murl","target":"murl://example.com/team","integrity":"sha256-short"}"#,
         ));
+        assert!(!m.validate().is_valid());
+    }
+
+    #[test]
+    fn rejects_duplicate_members_at_any_level() {
+        // Top level.
+        let err = Manifest::from_slice(
+            br#"{"murlVersion":"0.1","murlVersion":"0.1","name":"T",
+                 "resources":[{"id":"a","kind":"https","target":"https://e.com"}]}"#,
+            &Limits::default(),
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("duplicate"), "{err}");
+        // Inside a resource — the T-15 shape.
+        let err = Manifest::from_slice(
+            br#"{"murlVersion":"0.1","name":"T","resources":[
+                 {"id":"a","kind":"https","target":"https://safe.example",
+                  "target":"https://evil.example"}]}"#,
+            &Limits::default(),
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("duplicate"), "{err}");
+    }
+
+    #[test]
+    fn rejects_non_integer_numbers_anywhere() {
+        let m = parse(
+            r#"{"murlVersion":"0.1","name":"T",
+                "resources":[{"id":"a","kind":"https","target":"https://e.com",
+                              "meta":{"ratio":1.5}}]}"#,
+        );
+        let rep = m.validate();
+        assert!(!rep.is_valid());
+        assert!(
+            rep.errors.iter().any(|e| e.message.contains("non-integer")),
+            "{:?}",
+            rep.errors
+        );
+    }
+
+    #[test]
+    fn not_before_is_strict_and_ordered() {
+        let m = parse(
+            r#"{"murlVersion":"0.1","name":"T","notBefore":"2030-01-01T00:00:00Z",
+                "expires":"2031-01-01T00:00:00Z",
+                "resources":[{"id":"a","kind":"https","target":"https://e.com"}]}"#,
+        );
+        assert!(m.validate().is_valid());
+        // Lenient formats rejected.
+        let m = parse(
+            r#"{"murlVersion":"0.1","name":"T","notBefore":"2030-01-01",
+                "resources":[{"id":"a","kind":"https","target":"https://e.com"}]}"#,
+        );
+        assert!(!m.validate().is_valid());
+        // notBefore >= expires rejected.
+        let m = parse(
+            r#"{"murlVersion":"0.1","name":"T","notBefore":"2031-01-01T00:00:00Z",
+                "expires":"2030-01-01T00:00:00Z",
+                "resources":[{"id":"a","kind":"https","target":"https://e.com"}]}"#,
+        );
         assert!(!m.validate().is_valid());
     }
 

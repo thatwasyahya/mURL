@@ -1,0 +1,14 @@
+{
+  "murlVersion": "0.2",
+  "name": "Float meta",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a",
+      "meta": {
+        "ratio": 1.5
+      }
+    }
+  ]
+}

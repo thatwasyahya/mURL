@@ -1,0 +1,15 @@
+{
+  "murlVersion": "0.2",
+  "name": "Forward compatible",
+  "futureTopLevel": {
+    "x": 1
+  },
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a",
+      "futureResourceMember": true
+    }
+  ]
+}

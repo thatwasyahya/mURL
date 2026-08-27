@@ -1,0 +1,25 @@
+{
+  "murlVersion": "0.2",
+  "name": "Related",
+  "relations": [
+    {
+      "from": "src",
+      "rel": "documented-by",
+      "to": "docs"
+    }
+  ],
+  "resources": [
+    {
+      "id": "src",
+      "kind": "https",
+      "target": "https://example.com/src",
+      "role": "source"
+    },
+    {
+      "id": "docs",
+      "kind": "https",
+      "target": "https://example.com/docs",
+      "role": "docs"
+    }
+  ]
+}

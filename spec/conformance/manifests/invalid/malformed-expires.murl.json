@@ -1,0 +1,12 @@
+{
+  "murlVersion": "0.2",
+  "name": "Date only",
+  "expires": "2030-01-01",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a"
+    }
+  ]
+}

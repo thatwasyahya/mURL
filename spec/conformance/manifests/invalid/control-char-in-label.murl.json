@@ -1,0 +1,12 @@
+{
+  "murlVersion": "0.2",
+  "name": "Control label",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a",
+      "label": "line\u0001break"
+    }
+  ]
+}

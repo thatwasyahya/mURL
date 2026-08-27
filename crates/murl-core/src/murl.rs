@@ -7,7 +7,8 @@
 //! authority = "local" / host [ ":" port ]
 //! name      = segment *( "/" segment )        ; 1..=8 segments
 //! version   = "latest" / int *( "." int )     ; 1..=3 dotted integers
-//! selector  = 1*64( lower-alnum / "-" / "_" ) ; a resource id in the root manifest
+//! selector  = item *( "," item )              ; 1..=8 items
+//! item      = resource-id / "role=" role / "tag=" tag
 //! ```
 //!
 //! Deliberate deviations from generic RFC 3986 syntax, all security-motivated:
@@ -37,8 +38,10 @@ pub const MAX_SEGMENTS: usize = 8;
 pub const MAX_SEGMENT_BYTES: usize = 64;
 /// Maximum authority (host) length, matching DNS.
 pub const MAX_AUTHORITY_LEN: usize = 253;
-/// Maximum selector length.
+/// Maximum length of one selector item's value.
 pub const MAX_SELECTOR_LEN: usize = 64;
+/// Maximum number of comma-separated selector items.
+pub const MAX_SELECTOR_ITEMS: usize = 8;
 
 /// The reserved authority that resolves against the local name store instead
 /// of the network.
@@ -83,7 +86,7 @@ pub enum MurlParseError {
     MisplacedVersionMarker,
     #[error("invalid version tag: {0}")]
     InvalidVersion(String),
-    #[error("invalid selector: {0} (selectors are 1-64 chars of [a-z0-9_-])")]
+    #[error("invalid selector: {0}")]
     InvalidSelector(String),
     #[error("invalid query: {0}")]
     InvalidQuery(String),
@@ -197,20 +200,43 @@ impl fmt::Display for VersionTag {
     }
 }
 
+/// One item of a `#selector` fragment (spec §6.7).
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SelectorItem {
+    /// Matches the root-manifest resource with this id (and, for a `murl`
+    /// container, its spliced children).
+    Id(String),
+    /// `role=<role>` — matches every planned resource with this role.
+    Role(String),
+    /// `tag=<tag>` — matches every planned resource carrying this tag.
+    Tag(String),
+}
+
+impl fmt::Display for SelectorItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SelectorItem::Id(s) => f.write_str(s),
+            SelectorItem::Role(s) => write!(f, "role={s}"),
+            SelectorItem::Tag(s) => write!(f, "tag={s}"),
+        }
+    }
+}
+
 /// A parsed, validated mURL.
 ///
 /// Invariants (enforced by [`Murl::parse`], relied upon everywhere else):
 /// name segments are non-empty decoded UTF-8 with no control characters, no
 /// path separators, and are not dot segments; the authority is a lowercase
-/// reg-name or `local`; the selector, when present, is a valid resource id.
+/// reg-name or `local`; selector items, when present, satisfy the shared
+/// id/role/tag grammars.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Murl {
     pub authority: Authority,
     /// Decoded name segments (at least one).
     pub name: Vec<String>,
     pub version: VersionTag,
-    /// Optional `#selector` naming a resource id in the root manifest.
-    pub selector: Option<String>,
+    /// Optional `#selector` items addressing a subset of the destination.
+    pub selector: Option<Vec<SelectorItem>>,
     /// Raw query string, preserved but assigned no semantics in v0.1.
     pub query: Option<String>,
 }
@@ -280,7 +306,7 @@ impl Murl {
 
         let selector = match fragment {
             None => None,
-            Some(f) => Some(validate_selector(f)?),
+            Some(f) => Some(parse_selector(f)?),
         };
 
         if let Some(q) = query {
@@ -325,6 +351,17 @@ impl Murl {
     pub fn name_path(&self) -> String {
         self.name.join("/")
     }
+
+    /// The selector rendered back to its fragment form (without `#`).
+    pub fn selector_display(&self) -> Option<String> {
+        self.selector.as_ref().map(|items| {
+            items
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(",")
+        })
+    }
 }
 
 impl fmt::Display for Murl {
@@ -333,7 +370,7 @@ impl fmt::Display for Murl {
         if let Some(q) = &self.query {
             write!(f, "?{q}")?;
         }
-        if let Some(sel) = &self.selector {
+        if let Some(sel) = self.selector_display() {
             write!(f, "#{sel}")?;
         }
         Ok(())
@@ -443,16 +480,43 @@ fn decode_segment(raw: &str) -> Result<String, MurlParseError> {
     Ok(s)
 }
 
-fn validate_selector(f: &str) -> Result<String, MurlParseError> {
-    if f.is_empty()
-        || f.len() > MAX_SELECTOR_LEN
-        || !f
-            .bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-' || b == b'_')
-    {
-        return Err(MurlParseError::InvalidSelector(f.into()));
+fn parse_selector(f: &str) -> Result<Vec<SelectorItem>, MurlParseError> {
+    if f.is_empty() {
+        return Err(MurlParseError::InvalidSelector("empty fragment".into()));
     }
-    Ok(f.to_owned())
+    let parts: Vec<&str> = f.split(',').collect();
+    if parts.len() > MAX_SELECTOR_ITEMS {
+        return Err(MurlParseError::InvalidSelector(format!(
+            "at most {MAX_SELECTOR_ITEMS} comma-separated items"
+        )));
+    }
+    let mut items = Vec::with_capacity(parts.len());
+    for part in parts {
+        let item = if let Some(role) = part.strip_prefix("role=") {
+            if !crate::grammar::is_valid_role(role) {
+                return Err(MurlParseError::InvalidSelector(format!(
+                    "`{part}`: roles are [a-z0-9][a-z0-9-]{{0,31}}"
+                )));
+            }
+            SelectorItem::Role(role.to_owned())
+        } else if let Some(tag) = part.strip_prefix("tag=") {
+            if !crate::grammar::is_valid_tag(tag) {
+                return Err(MurlParseError::InvalidSelector(format!(
+                    "`{part}`: tags are [a-z0-9-]{{1,32}}"
+                )));
+            }
+            SelectorItem::Tag(tag.to_owned())
+        } else {
+            if !crate::grammar::is_valid_resource_id(part) {
+                return Err(MurlParseError::InvalidSelector(format!(
+                    "`{part}`: resource ids are [a-z0-9][a-z0-9_-]{{0,63}}"
+                )));
+            }
+            SelectorItem::Id(part.to_owned())
+        };
+        items.push(item);
+    }
+    Ok(items)
 }
 
 /// Decode percent-encoding. `+` is NOT treated as a space (mURLs are not form
@@ -548,7 +612,7 @@ mod tests {
         );
         assert_eq!(m.name, vec!["team", "project-x"]);
         assert_eq!(m.version, VersionTag::Pinned(vec![1, 4, 2]));
-        assert_eq!(m.selector.as_deref(), Some("monitoring"));
+        assert_eq!(m.selector_display().as_deref(), Some("monitoring"));
         assert_eq!(m.identity(), "murl://example.com/team/project-x@1.4.2");
         assert_eq!(
             m.to_string(),
@@ -639,6 +703,30 @@ mod tests {
         assert!(Murl::parse("murl://local/x#UPPER").is_err());
         assert!(Murl::parse("murl://local/x#a b").is_err());
         assert!(Murl::parse("murl://local/x#a/b").is_err());
+        assert!(Murl::parse("murl://local/x#a,,b").is_err());
+        assert!(Murl::parse("murl://local/x#role=").is_err());
+        assert!(Murl::parse("murl://local/x#role=UPPER").is_err());
+        assert!(Murl::parse("murl://local/x#tag=x_y").is_err());
+        assert!(Murl::parse("murl://local/x#a,b,c,d,e,f,g,h,i").is_err()); // 9 items
+    }
+
+    #[test]
+    fn parses_selector_items_and_round_trips() {
+        let m = Murl::parse("murl://local/x#docs,role=monitoring,tag=dev").unwrap();
+        assert_eq!(
+            m.selector.as_deref(),
+            Some(
+                &[
+                    SelectorItem::Id("docs".into()),
+                    SelectorItem::Role("monitoring".into()),
+                    SelectorItem::Tag("dev".into()),
+                ][..]
+            )
+        );
+        assert_eq!(m.to_string(), "murl://local/x#docs,role=monitoring,tag=dev");
+        assert_eq!(Murl::parse(&m.to_string()).unwrap(), m);
+        // Identity still strips the selector.
+        assert_eq!(m.identity(), "murl://local/x");
     }
 
     #[test]

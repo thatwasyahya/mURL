@@ -1,11 +1,17 @@
 # mURL Specification
 
-**Multi-Resource Uniform Locator — version 0.1**
+**Multi-Resource Uniform Locator — version 0.2**
 
 Status: **experimental draft**. This document is the normative reference for
-the mURL v0.1 format and resolution behavior, as implemented by the reference
+the mURL format and resolution behavior, as implemented by the reference
 implementation in this repository. Everything in it may change before 1.0.
 Nothing in it is an internet standard, and it must not be presented as one.
+
+Changes from 0.1: duplicate JSON members are now explicitly invalid (§5.1),
+the optional `notBefore` member bounds a manifest's validity window (§5.2,
+§8.3), selectors support multiple items and `role=`/`tag=` forms (§3.1,
+§6.7), and `@latest` mutability contracts are spelled out (§9). Manifests
+declaring `murlVersion` `"0.1"` remain accepted (§9).
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are to be
 interpreted as described in RFC 2119.
@@ -68,10 +74,17 @@ pct-encoded = "%" HEXDIG HEXDIG
 version     = "latest" / vnum *2( "." vnum )
 vnum        = 1*5DIGIT                        ; no leading zeros
 
-selector    = 1*64( lc-alnum / "-" / "_" )
-query       = *512qchar                       ; reserved, no v0.1 semantics
+selector    = sel-item *7( "," sel-item )     ; 1..8 items, union semantics
+sel-item    = resource-id
+            / "role=" role                    ; role  = [a-z0-9][a-z0-9-]{0,31}
+            / "tag=" tag                      ; tag   = [a-z0-9-]{1,32}
+resource-id = 1*64( lc-alnum / "-" / "_" )    ; first char lc-alnum
+query       = *512qchar                       ; reserved, no semantics yet
 lc-alnum    = %x61-7A / DIGIT
 ```
+
+The `resource-id`, `role`, and `tag` grammars are identical to the manifest
+field grammars they select against (§5.2–5.3) — one definition, shared.
 
 ### 3.2 Constraints (all MUST)
 
@@ -160,20 +173,27 @@ Resolvers MUST treat `local` as reserved. The authorities `invalid`,
 * Encoding: UTF-8 JSON. The top-level value MUST be an object.
 * Size: a resolver MUST enforce a byte limit *before* parsing. Default
   262 144 bytes.
-* Numbers anywhere in a manifest MUST be integers (see §7.1).
-* Unknown members MUST be ignored by v0.1 consumers (forward compatibility)
-  and SHOULD be surfaced as warnings. Signatures cover unknown members (§7).
+* Numbers anywhere in a manifest MUST be integers (see §7.1); validators
+  MUST report any other number as an error.
+* **Duplicate object members MUST be rejected**, at every nesting level.
+  Duplicates are a cross-implementation signature-confusion vector: two
+  conformant consumers could verify the same signature yet act on different
+  values (threat model T-15). Rejection happens at parse time, before any
+  interpretation.
+* Unknown members MUST be ignored (forward compatibility) and SHOULD be
+  surfaced as warnings. Signatures cover unknown members (§7).
 
 ### 5.2 Top-level members
 
 | Member | Type | Req | Meaning |
 |---|---|---|---|
-| `murlVersion` | string | yes | Spec version. `"0.1"`. |
+| `murlVersion` | string | yes | Format version: `"0.2"` (writers) — `"0.1"` MUST still be accepted (§9). |
 | `id` | string | no* | The canonical mURL this manifest is bound to (§6.4). *SHOULD be present in signed manifests.* |
 | `name` | string | yes | Human name of the destination. 1–120 chars, no control chars. |
 | `description` | string | no | ≤ 2000 chars. |
 | `version` | string | no | Content version, dotted integers (`"1.4.2"`). Never `latest`. |
-| `expires` | string | no | Strict UTC timestamp `YYYY-MM-DDTHH:MM:SSZ`. After this instant the manifest is expired (§8.4). |
+| `notBefore` | string | no | Strict UTC timestamp `YYYY-MM-DDTHH:MM:SSZ`. Before this instant the manifest is not yet valid; MUST be strictly before `expires` when both are present. With `expires`, bounds the replay window of a captured manifest (§8.3, §9). |
+| `expires` | string | no | Strict UTC timestamp `YYYY-MM-DDTHH:MM:SSZ`. After this instant the manifest is expired (§8.3). |
 | `resources` | array | yes | 1–64 resource objects. |
 | `relations` | array | no | ≤128 typed metadata edges (§5.4). |
 | `signature` | object | no | Detached signature block (§7.2). |
@@ -313,10 +333,20 @@ policy decision and MUST never be triggerable by manifest content.
 
 ### 6.7 Selectors and failure semantics
 
-`#selector` addresses one resource id **in the root manifest**. Resolution
-keeps only that resource — including, for a `murl`-kind resource, its
-spliced children. A selector matching nothing is an error, not an empty
-success.
+`#selector` addresses a subset of the destination, as 1–8 comma-separated
+items with **union** semantics (a resource is kept if any item claims it):
+
+* a **resource id** item matches that id **in the root manifest** —
+  including, for a `murl`-kind container, all of its spliced children;
+* a **`role=`** item matches every resource in the flattened plan carrying
+  that role;
+* a **`tag=`** item matches every resource in the flattened plan carrying
+  that tag.
+
+Every item MUST match at least one resource; a selector item that selects
+nothing is an error for the whole resolution, never an empty success —
+silence is how typos become confusion. Selectors never affect *which
+manifests are fetched*, only which planned resources survive filtering.
 
 Per-resource outcomes: `OPENED`, `SKIPPED`, `DENIED`, `FAILED`,
 `UNAVAILABLE`. Aggregate:
@@ -406,19 +436,31 @@ MUST reflect that.
 * A remotely fetched manifest referencing the local filesystem adds a
   consent reason (a remote author asserting knowledge of your disk is
   suspicious).
-* An expired manifest: SAFE resources prompt with a warning; everything
-  else is denied.
+* An expired or not-yet-valid manifest (`expires` past, or `notBefore`
+  in the future): SAFE resources prompt with a warning; everything else is
+  denied.
 
 ## 9. Versioning
 
-* **Spec version** (`murlVersion`): this document is `0.1`. Consumers MUST
-  reject manifests with a different major version and SHOULD accept
-  same-major/newer-minor with warnings (post-1.0 rule; pre-1.0 everything
-  may break).
+* **Format version** (`murlVersion`): writers emit `"0.2"`. Consumers MUST
+  accept `"0.1"` and `"0.2"` (0.2 is additive over 0.1: `notBefore`, plus
+  rules 0.1 stated but underspecified). Post-1.0 rule: reject different
+  major, accept same-major/newer-minor with warnings; pre-1.0 everything
+  may break.
 * **Name versions** (`@1.4.2`): pinned resolutions are immutable —
   authorities MUST NOT change the content behind a pinned version, and
   resolvers cache them indefinitely. `@latest` is a mutable alias.
 * **Manifest `version`**: informational content version.
+
+**`@latest` mutability contract and rollback.** An authority MAY change what
+`@latest` serves at any time; consumers get no ordering guarantee between
+fetches, and a network attacker who captured an old (validly signed)
+manifest can replay it until it expires (threat T-16). Authorities that sign
+manifests SHOULD therefore set `expires` to bound that window — short for
+fast-moving destinations, long for stable ones — and MAY set `notBefore`
+when pre-publishing content that must not activate early. Resolvers MUST
+surface expired/not-yet-valid states and apply the §8.3 policy. Monotonic
+version enforcement (a transparency log) is explicitly out of scope pre-1.0.
 
 ## 10. Registration considerations
 

@@ -1,0 +1,6 @@
+{
+  "murlVersion": "0.2",
+  "murlVersion": "0.1",
+  "name": "Dup",
+  "resources": [{"id": "a", "kind": "https", "target": "https://example.com/a"}]
+}

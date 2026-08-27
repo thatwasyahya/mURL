@@ -30,12 +30,15 @@
 //! Specification: `spec/SPECIFICATION.md`. Status: **experimental** — the
 //! format and this API can and will change before 1.0.
 
+pub mod bundle;
 pub mod cache;
 pub mod canonical;
 pub mod dispatch;
 pub mod error;
 pub mod fetch;
+pub mod grammar;
 pub mod graph;
+pub mod json;
 pub mod kind;
 pub mod limits;
 pub mod manifest;
@@ -45,6 +48,7 @@ pub mod resolver;
 pub mod time;
 pub mod trust;
 
+pub use bundle::{Bundle, BundleEntry};
 pub use error::{Error, Result};
 pub use kind::Kind;
 pub use limits::Limits;

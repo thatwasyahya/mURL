@@ -23,19 +23,22 @@ of heterogeneous resources.*
 - [x] OS registration: Linux (XDG), Windows (HKCU); macOS documented stub
 - [x] 120+ tests incl. security suites · 3 fuzz targets · CI · deny.toml
 
-## v0.2 — format hardening
+## v0.2 — format hardening ✅ shipped
 
 Focus: make the *format* trustworthy enough to freeze.
 
-- [ ] Reject duplicate JSON keys outright (threat T-15 residual)
-- [ ] `expires`/rollback guidance; `not-before`; spec text for `@latest`
-      mutability contracts
-- [ ] Selector extensions: `#role=docs`, multi-select semantics
-- [ ] Manifest JSON Schema published alongside the spec; conformance test
-      vectors (valid/invalid corpora) other implementations can run
-- [ ] `murl create` interactive mode; `murl export`/`import` (bundle a
-      name + nested manifests + pins into one shareable file)
-- [ ] Windows/macOS CI packaging artifacts (signed archives)
+- [x] Reject duplicate JSON members outright, at every nesting level
+      (threat T-15 residual closed) — strict parser in `murl-core::json`
+- [x] `notBefore` validity floor; integer-only enforcement everywhere
+      including `meta`; spec text for `@latest` mutability and rollback
+- [x] Selector extensions: multi-item `#a,b`, `#role=docs`, `#tag=dev`,
+      union semantics, every item must match
+- [x] Manifest JSON Schema (`spec/murl-manifest.schema.json`) and the
+      conformance suite (`spec/conformance/`: 14 valid + 34 invalid
+      manifests, 79 mURL vectors) with a Rust harness other
+      implementations can copy
+- [x] `murl create --interactive`; `murl export`/`import` bundles
+      (verbatim bytes + integrity, imports land in the local namespace)
 
 ## v0.3 — the daemon and real consent UX
 

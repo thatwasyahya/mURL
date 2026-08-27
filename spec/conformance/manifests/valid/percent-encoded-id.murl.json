@@ -1,0 +1,12 @@
+{
+  "murlVersion": "0.2",
+  "name": "Encoded name",
+  "id": "murl://local/caf%C3%A9",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a"
+    }
+  ]
+}

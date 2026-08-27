@@ -151,24 +151,26 @@ Even an approved plan acting as a fork bomb.
 required/optional semantics mean one hung handler doesn't wedge the plan
 (spawn, don't wait).
 
-### T-15 · Duplicate-key JSON differentials ⚠
+### T-15 · Duplicate-key JSON differentials ✅ (closed in v0.2)
 
 `{"target": "https://safe", "target": "file:///etc/passwd"}` interpreted
-differently by verifier and consumer.
+differently by verifier and consumer, or by two conformant implementations.
 
-**Defenses**: one parser (serde_json, last-wins) for *both* signature
-verification and interpretation — no differential inside this
-implementation. **Residual**: cross-implementation differentials remain
-possible until duplicate keys are rejected outright; planned validator
-hardening (roadmap v0.2), and the spec will make duplicates invalid.
+**Defenses**: duplicate object members are **invalid** (spec §5.1) and
+rejected at parse time, at every nesting level, before a value exists —
+`murl-core::json::from_slice_strict`. Bundles use the same strict parser.
+The cross-implementation differential is closed at the format level, not
+merely avoided by sharing one parser.
 
 ### T-16 · Offline/rollback attacks ⚠
 
 Serving an old (validly signed) manifest; blocking fetches to force stale
-cache.
+cache; activating a pre-published manifest early.
 
-**Defenses**: `expires` gives authors a bounded-staleness tool (expired ⇒
-SAFE-with-warning only); stale-cache use is warned; pinned versions are
-immutable by contract. **Residual**: no monotonic version enforcement for
-`@latest` (a transparency log is far beyond v0.1; documented as future
-work).
+**Defenses**: `expires` bounds staleness and `notBefore` bounds early
+activation — outside either window, only SAFE resources reach a prompt and
+everything else is denied (spec §8.3); stale-cache use is warned; pinned
+versions are immutable by contract; spec §9 states the `@latest` mutability
+contract and directs signing authorities to set `expires`. **Residual**: no
+monotonic version enforcement for `@latest` (a transparency log remains out
+of scope pre-1.0).

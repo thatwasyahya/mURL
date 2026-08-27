@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "Relative",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "dir",
+      "target": "relative/path"
+    }
+  ]
+}

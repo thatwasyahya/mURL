@@ -1,0 +1,22 @@
+{
+  "murlVersion": "0.2",
+  "name": "Cycle",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a",
+      "dependsOn": [
+        "b"
+      ]
+    },
+    {
+      "id": "b",
+      "kind": "https",
+      "target": "https://example.com/b",
+      "dependsOn": [
+        "a"
+      ]
+    }
+  ]
+}

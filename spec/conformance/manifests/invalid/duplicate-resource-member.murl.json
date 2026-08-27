@@ -1,0 +1,8 @@
+{
+  "murlVersion": "0.2",
+  "name": "Dup target",
+  "resources": [
+    {"id": "a", "kind": "https", "target": "https://safe.example",
+     "target": "https://evil.example"}
+  ]
+}

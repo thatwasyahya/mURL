@@ -1,0 +1,12 @@
+{
+  "murlVersion": "0.2",
+  "name": "Bad role",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a",
+      "role": "Not-A-Role"
+    }
+  ]
+}

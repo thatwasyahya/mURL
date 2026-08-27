@@ -1,0 +1,12 @@
+{
+  "murlVersion": "0.2",
+  "name": "Offset timestamp",
+  "notBefore": "2030-01-01T00:00:00+02:00",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a"
+    }
+  ]
+}

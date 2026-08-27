@@ -1,0 +1,30 @@
+{
+  "murlVersion": "0.2",
+  "name": "Ordered",
+  "resources": [
+    {
+      "id": "third",
+      "kind": "https",
+      "target": "https://example.com/third",
+      "order": 1,
+      "dependsOn": [
+        "second"
+      ]
+    },
+    {
+      "id": "second",
+      "kind": "https",
+      "target": "https://example.com/second",
+      "order": 2,
+      "dependsOn": [
+        "first"
+      ]
+    },
+    {
+      "id": "first",
+      "kind": "https",
+      "target": "https://example.com/first",
+      "order": 3
+    }
+  ]
+}

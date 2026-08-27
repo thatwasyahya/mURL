@@ -1,0 +1,17 @@
+{
+  "murlVersion": "0.2",
+  "name": "Wrong alg",
+  "signature": {
+    "alg": "rsa",
+    "keyId": "ed25519:0123456789abcdef",
+    "publicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "sig": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+  },
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a"
+    }
+  ]
+}

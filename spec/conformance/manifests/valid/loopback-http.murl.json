@@ -1,0 +1,16 @@
+{
+  "murlVersion": "0.2",
+  "name": "Loopback",
+  "resources": [
+    {
+      "id": "dev",
+      "kind": "https",
+      "target": "http://localhost:8080/app"
+    },
+    {
+      "id": "dev2",
+      "kind": "https",
+      "target": "http://127.0.0.1:3000/"
+    }
+  ]
+}

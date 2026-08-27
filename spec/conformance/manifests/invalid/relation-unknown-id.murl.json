@@ -1,0 +1,18 @@
+{
+  "murlVersion": "0.2",
+  "name": "Ghost relation",
+  "relations": [
+    {
+      "from": "a",
+      "rel": "relates-to",
+      "to": "ghost"
+    }
+  ],
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a"
+    }
+  ]
+}

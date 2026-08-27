@@ -20,7 +20,8 @@ pub fn run(app: &App, murl_str: &str) -> Result<i32> {
                 "local": m.authority.is_local(),
                 "name": m.name,
                 "version": m.version.to_string(),
-                "selector": m.selector,
+                "selector": m.selector_display(),
+                "selectorItems": m.selector,
                 "query": m.query,
                 "wellKnownUrl": well_known_url(&m),
             }))?
@@ -38,7 +39,7 @@ pub fn run(app: &App, murl_str: &str) -> Result<i32> {
         );
         println!("name:       {}", m.name_path());
         println!("version:    {}", m.version);
-        if let Some(sel) = &m.selector {
+        if let Some(sel) = m.selector_display() {
             println!("selector:   #{sel}");
         }
         if let Some(q) = &m.query {

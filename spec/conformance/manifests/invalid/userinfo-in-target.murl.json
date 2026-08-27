@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "Userinfo",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://github.com@evil.example/x"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "Traversal",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "file",
+      "target": "/home/u/../../etc/shadow"
+    }
+  ]
+}

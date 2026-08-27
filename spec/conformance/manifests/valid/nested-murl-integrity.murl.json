@@ -1,0 +1,12 @@
+{
+  "murlVersion": "0.2",
+  "name": "Composed",
+  "resources": [
+    {
+      "id": "team",
+      "kind": "murl",
+      "target": "murl://local/team",
+      "integrity": "sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "murlVersion": "0.2",
+  "name": "Inverted window",
+  "notBefore": "2031-01-01T00:00:00Z",
+  "expires": "2030-01-01T00:00:00Z",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a"
+    }
+  ]
+}

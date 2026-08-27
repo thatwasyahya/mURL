@@ -1,0 +1,17 @@
+{
+  "murlVersion": "0.2",
+  "name": "Short key",
+  "signature": {
+    "alg": "ed25519",
+    "keyId": "ed25519:0123456789abcdef",
+    "publicKey": "QUJD",
+    "sig": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+  },
+  "resources": [
+    {
+      "id": "a",
+      "kind": "https",
+      "target": "https://example.com/a"
+    }
+  ]
+}

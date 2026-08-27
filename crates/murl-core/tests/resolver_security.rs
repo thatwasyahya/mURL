@@ -216,6 +216,105 @@ fn selector_filters_to_one_root_resource() {
 }
 
 #[test]
+fn selector_role_tag_and_multi_items() {
+    let env = Env::new("selector-v2");
+    let m = serde_json::json!({
+        "murlVersion": "0.1",
+        "name": "P",
+        "resources": [
+            {"id": "src", "kind": "https", "target": "https://e.com/src", "role": "source"},
+            {"id": "docs", "kind": "https", "target": "https://e.com/docs", "role": "docs"},
+            {"id": "wiki", "kind": "https", "target": "https://e.com/wiki", "role": "docs",
+             "tags": ["team"]},
+            {"id": "dash", "kind": "https", "target": "https://e.com/dash", "tags": ["ops"]},
+        ]
+    });
+    env.add_local("murl://local/p", &bytes(&m));
+
+    // role= matches every resource with that role.
+    let r = env
+        .resolver(None)
+        .resolve(&murl("murl://local/p#role=docs"))
+        .unwrap();
+    let ids: Vec<&str> = r.resources.iter().map(|p| p.resource.id.as_str()).collect();
+    assert_eq!(ids, vec!["docs", "wiki"]);
+
+    // tag= matches tag carriers.
+    let r = env
+        .resolver(None)
+        .resolve(&murl("murl://local/p#tag=ops"))
+        .unwrap();
+    assert_eq!(r.resources.len(), 1);
+    assert_eq!(r.resources[0].resource.id, "dash");
+
+    // Multi-item union, deduplicated by the retain pass.
+    let r = env
+        .resolver(None)
+        .resolve(&murl("murl://local/p#src,role=docs"))
+        .unwrap();
+    let ids: Vec<&str> = r.resources.iter().map(|p| p.resource.id.as_str()).collect();
+    assert_eq!(ids, vec!["src", "docs", "wiki"]);
+
+    // Every item must match: one dead item fails the whole selector.
+    let err = env
+        .resolver(None)
+        .resolve(&murl("murl://local/p#src,role=nope"))
+        .unwrap_err();
+    assert!(matches!(err, Error::NotFound(_)), "{err}");
+    let err = env
+        .resolver(None)
+        .resolve(&murl("murl://local/p#tag=nope"))
+        .unwrap_err();
+    assert!(matches!(err, Error::NotFound(_)), "{err}");
+}
+
+#[test]
+fn premature_manifest_blocks_sensitive_resources() {
+    let env = Env::new("premature");
+    let mut m = manifest(
+        "P",
+        json!([
+            res("web", "https", "https://e.com"),
+            res("notes", "file", "/home/u/notes.txt"),
+        ]),
+    );
+    m["notBefore"] = json!("2030-01-01T00:00:00Z"); // clock is 2023
+    env.add_local("murl://local/p", &bytes(&m));
+    let mut r = env.resolver(None).resolve(&murl("murl://local/p")).unwrap();
+    assert!(r.nodes[0].premature);
+    assert!(
+        r.warnings.iter().any(|w| w.contains("not valid before")),
+        "{:?}",
+        r.warnings
+    );
+    r.apply_policy(&Policy::default());
+    let notes = r
+        .resources
+        .iter()
+        .find(|p| p.resource.id == "notes")
+        .unwrap();
+    assert!(matches!(notes.decision, Some(Decision::Deny(_))));
+    let web = r.resources.iter().find(|p| p.resource.id == "web").unwrap();
+    assert!(matches!(web.decision, Some(Decision::Prompt(_))));
+}
+
+#[test]
+fn duplicate_manifest_members_fail_resolution() {
+    let env = Env::new("dup-members");
+    env.add_local(
+        "murl://local/dup",
+        br#"{"murlVersion":"0.1","name":"D","resources":[
+             {"id":"a","kind":"https","target":"https://safe.example",
+              "target":"https://evil.example"}]}"#,
+    );
+    let err = env
+        .resolver(None)
+        .resolve(&murl("murl://local/dup"))
+        .unwrap_err();
+    assert!(err.to_string().contains("duplicate"), "{err}");
+}
+
+#[test]
 fn identity_binding_rejects_relabelled_manifests() {
     let env = Env::new("binding");
     let mut m = manifest("M", json!([res("a", "https", "https://e.com")]));
