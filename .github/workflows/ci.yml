@@ -102,7 +102,4 @@ jobs:
       - run: cargo install cargo-fuzz --locked
       - run: cargo +nightly fuzz build
       - name: smoke-run each target
-        run: |
-          for target in parse_murl parse_manifest canonical_json; do
-            cargo +nightly fuzz run "$target" -- -max_total_time=30
-          done
+        run: bash fuzz/smoke.sh 30
