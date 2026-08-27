@@ -6,7 +6,11 @@ Cargo.lock.orig
 *.swp
 .DS_Store
 /fuzz/target
-/fuzz/corpus/**/crash-*
 /fuzz/artifacts
+# Only curated seed inputs are tracked; libFuzzer-generated corpus entries
+# (hash-named) and crashes stay local.
+/fuzz/corpus/**
+!/fuzz/corpus/*/
+!/fuzz/corpus/*/seed-*
 .idea/
 .vscode/
