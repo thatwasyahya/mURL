@@ -91,6 +91,9 @@ pub fn report_text(name: &str, report: &ExecutionReport) -> String {
             OutcomeStatus::Skipped => "•",
             OutcomeStatus::Unavailable => "⚠",
             OutcomeStatus::Denied | OutcomeStatus::Failed => "✗",
+            // OutcomeStatus is #[non_exhaustive] (docs/stability.md): a
+            // future variant must render as *something*, not fail to build.
+            _ => "?",
         };
         out.push_str(&format!(
             "  {symbol} {:id_width$}  {}{}\n",

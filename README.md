@@ -2,9 +2,10 @@
 
 **One identifier that opens a whole working context.**
 
-> Status: **experimental** (v0.1). A working reference implementation of a
-> proposed primitive, not a standard. Interfaces and the format itself may
-> change. See [docs/roadmap.md](docs/roadmap.md) for stability labels.
+> Status: **experimental** (format v0.2). A working reference implementation
+> of a proposed primitive, not a standard. Interfaces and the format itself
+> may still change; see [docs/stability.md](docs/stability.md) for what
+> carries which label and [docs/roadmap.md](docs/roadmap.md) for what's next.
 
 ```text
 URL   :  identifier ──────────────▶ one resource
@@ -69,6 +70,8 @@ cargo build
 
 # the full guided tour (hermetic — temp state, dry-run open, auto-cleanup):
 bash examples/demo.sh
+# and the daemon path, including its fail-closed behavior:
+bash examples/daemon-demo.sh
 ```
 
 Or by hand:
@@ -82,7 +85,9 @@ murl open murl://local/project-x              # consent, then dispatch
 murl open 'murl://local/project-x#monitoring' # just one part of it
 
 murl keygen && murl sign project-x.murl.json  # sign it
+murl export murl://local/project-x            # bundle it, nested manifests and all
 murl os install                               # make murl:// clickable (Linux/Windows)
+murl-daemon run                               # optional: a resident consent surface
 ```
 
 A manifest looks like this (full schema: [spec §5](spec/SPECIFICATION.md)):
@@ -112,7 +117,10 @@ A manifest looks like this (full schema: [spec §5](spec/SPECIFICATION.md)):
 | [docs/security.md](docs/security.md) · [docs/threat-model.md](docs/threat-model.md) | the security model and the 16 threats it answers |
 | [docs/trust-model.md](docs/trust-model.md) | signatures, pinning, and why not PKI |
 | [docs/resolution.md](docs/resolution.md) · [docs/resource-types.md](docs/resource-types.md) | how names resolve; the kind registry |
-| [docs/os-integration.md](docs/os-integration.md) | Linux/Windows registration; macOS plan |
+| [docs/os-integration.md](docs/os-integration.md) | Linux, Windows, and macOS registration |
+| [docs/daemon.md](docs/daemon.md) | the resident resolver, its wire protocol, and its IPC threat model |
+| [docs/stability.md](docs/stability.md) | what's stable, what's experimental, and the compatibility rules |
+| [spec/conformance/](spec/conformance/) | the vector suite an independent implementation can test against |
 | [docs/prior-art.md](docs/prior-art.md) | honest map of neighbors (ORE, Metalink, PowerToys, …) and what's actually novel |
 | [docs/examples.md](docs/examples.md) · [docs/faq.md](docs/faq.md) · [docs/roadmap.md](docs/roadmap.md) | walkthroughs, answers, plans |
 
@@ -120,14 +128,19 @@ A manifest looks like this (full schema: [spec §5](spec/SPECIFICATION.md)):
 
 ```text
 crates/murl-core   the protocol: parser · manifest · validator · resolver ·
-                   policy · trust · cache · dispatch planning (no I/O effects;
-                   network & process creation live behind traits)
-crates/murl-cli    the `murl` binary: commands, HTTPS fetcher (SSRF-guarded),
-                   launcher (argv-only), consent UI, OS registration
+                   policy · trust · cache · bundles · dispatch planning
+                   (no I/O effects; network & process creation behind traits)
+crates/murl-net    the hardened HTTPS fetcher, shared by CLI and daemon
+crates/murl-daemon the resident consent surface: wire protocol, socket
+                   security, ConsentUi abstraction
+crates/murl-cli    the `murl` binary: commands, launcher (argv-only),
+                   consent, OS registration, daemon client
 fuzz/              cargo-fuzz targets: parser, manifest, canonical JSON
-spec/              the formal specification
+spec/              the specification, JSON Schema, conformance vectors,
+                   and the IANA registration templates
+packaging/macos/   mURL.app bundle build (Launch Services registration)
 docs/              design & operations documentation
-examples/          Project X demo destination + demo.sh
+examples/          Project X destination + demo.sh + daemon-demo.sh
 ```
 
 ## Backward compatibility

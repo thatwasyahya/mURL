@@ -103,6 +103,7 @@ pub enum Approval {
 /// What happened to one resource.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[non_exhaustive]
 pub enum OutcomeStatus {
     Opened,
     Skipped,

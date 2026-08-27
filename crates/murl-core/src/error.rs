@@ -9,6 +9,7 @@ use crate::murl::MurlParseError;
 /// Variants are grouped by pipeline stage so an embedder (CLI, daemon, GUI)
 /// can map them onto exit codes or user-facing messages without string
 /// matching.
+#[non_exhaustive]
 #[derive(Debug, Error)]
 pub enum Error {
     /// The mURL string itself is malformed.

@@ -6,6 +6,45 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added — v0.4 platform completeness
+
+* **macOS app bundle** (`packaging/macos/build-app.sh` + `Info.plist.in`):
+  Launch Services reads scheme claims only from an application bundle, so
+  registration needs one. The bundle wraps the same binary; the launcher
+  stub passes the activated URL through untouched.
+* **Four new resource kinds**, each with a security review and conformance
+  vectors: `ssh` and `remote-desktop` (DANGEROUS, handler-gated, option
+  smuggling refused), `geo` and `mailto` (SAFE, range-checked and
+  header-allow-listed respectively).
+* `murl handler set-ssh` / `set-remote-desktop`.
+
+### Added — v0.3 the daemon
+
+* **`murl-daemon`**: a resident resolver providing a persistent consent
+  surface, over a user-private socket (0600 in a 0700 directory, ownership
+  verified by both sides). Its IPC threat model (D-1 … D-7) is documented
+  in [docs/daemon.md](docs/daemon.md) and was written before the code.
+* **`ConsentUi` abstraction** so a GUI dialog can replace the terminal
+  prompt without touching the protocol or the security model. Policy
+  denials survive a deliberately rogue surface (tested).
+* **`murl-net`**: the hardened HTTPS fetcher extracted so the CLI and the
+  daemon share one implementation.
+* CLI `--daemon` / `--no-daemon`; the default tries the daemon and falls
+  back silently. The daemon is never a dependency.
+
+### Added — v1.0 preparation
+
+* [docs/stability.md](docs/stability.md): stability labels, post-1.0
+  compatibility rules, deprecation policy, and the security exception.
+  `#[non_exhaustive]` applied to the enums expected to grow.
+* [spec/registration/](spec/registration/): IANA templates for the `murl`
+  URI scheme (RFC 7595 provisional) and `application/murl+json`
+  (RFC 6838/6839), drafted but deliberately not submitted — registration
+  is gated on a second implementation.
+* `spec/check-schema.py` in CI: the descriptive schema must accept every
+  valid vector and is held honest about which invalid ones it cannot catch.
+* `examples/daemon-demo.sh`, also run in CI.
+
 ## [0.2.0] — 2026-08-27
 
 Format hardening. The manifest format is now strict enough to freeze, and

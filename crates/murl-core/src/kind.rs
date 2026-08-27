@@ -11,6 +11,9 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 /// A parsed resource kind.
+// Kinds grow in minor releases (docs/stability.md), so adding one must
+// not be a breaking change for downstream matchers.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Kind {
     /// A web resource, dispatched to the default browser. Targets must be

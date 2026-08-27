@@ -47,9 +47,28 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
-      # The demo must keep working on Linux — it is documentation.
+      # The demo and the daemon smoke test are documentation: if they stop
+      # working, the docs are lying.
       - if: runner.os == 'Linux'
         run: bash examples/demo.sh
+      - if: runner.os == 'Linux'
+        run: bash examples/daemon-demo.sh
+      # The macOS bundle is how the scheme gets registered there; a broken
+      # build script is a broken platform.
+      - if: runner.os == 'macOS'
+        run: bash packaging/macos/build-app.sh
+
+  schema:
+    name: manifest schema vs examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: pip install --quiet jsonschema
+      - name: validate schema and every conformance vector against it
+        run: python3 spec/check-schema.py
 
   msrv:
     name: minimum supported rust (1.75)
