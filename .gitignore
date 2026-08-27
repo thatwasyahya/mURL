@@ -1,0 +1,12 @@
+/target
+**/target
+Cargo.lock.orig
+*.orig
+*.rej
+*.swp
+.DS_Store
+/fuzz/target
+/fuzz/corpus/**/crash-*
+/fuzz/artifacts
+.idea/
+.vscode/

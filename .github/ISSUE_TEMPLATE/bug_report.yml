@@ -1,0 +1,41 @@
+name: Bug report
+description: Something behaves differently than the spec or docs say it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security vulnerabilities do not belong here** — use private
+        vulnerability reporting (see SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`murl --version`, or the commit hash"
+      placeholder: "murl 0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "Ubuntu 24.04 / Windows 11 / macOS 15"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: >
+        Exact commands, and where relevant the mURL string and the manifest
+        (redact private targets). `--json` and `-vv` output are gold.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+      description: What should have happened (cite spec/docs if you can), and what did.
+    validations:
+      required: true

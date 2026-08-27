@@ -1,0 +1,33 @@
+name: Feature request / design proposal
+description: Propose a change to the format, the resolver, or the tooling
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't you express or do today? Concrete scenarios beat abstractions.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: >
+        Sketch it. If it touches the format or resolution semantics, say
+        which spec sections change.
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security considerations
+      description: >
+        mURL's bar: how does this interact with classification, consent,
+        trust, and the limits? (docs/security.md, docs/threat-model.md)
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

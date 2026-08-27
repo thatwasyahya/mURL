@@ -1,0 +1,22 @@
+{
+  "murlVersion": "0.1",
+  "id": "murl://local/demo/team",
+  "name": "Example Team",
+  "description": "Shared team resources, composed into project contexts via kind: murl.",
+  "resources": [
+    {
+      "id": "wiki",
+      "kind": "https",
+      "target": "https://wiki.example.com/team",
+      "label": "Team wiki",
+      "role": "docs"
+    },
+    {
+      "id": "chat",
+      "kind": "https",
+      "target": "https://chat.example.com/#/room/team",
+      "label": "Team chat",
+      "role": "chat"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+[workspace]
+resolver = "2"
+members = ["crates/murl-core", "crates/murl-cli"]
+exclude = ["fuzz"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/thatwasyahya/mURL"
+authors = ["mURL contributors"]
+homepage = "https://github.com/thatwasyahya/mURL"
+keywords = ["murl", "uri", "resolver", "workspace", "addressing"]
+categories = ["command-line-utilities", "os"]
+
+[workspace.dependencies]
+murl-core = { path = "crates/murl-core", version = "0.1.0" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+ed25519-dalek = { version = "2", default-features = false, features = ["std", "fast", "zeroize"] }
+sha2 = "0.10"
+base64 = "0.22"
+getrandom = "0.2"
+clap = { version = "4", features = ["derive"] }
+ureq = { version = "2", default-features = false, features = ["tls"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+unused_must_use = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+print_stdout = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

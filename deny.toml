@@ -1,0 +1,41 @@
+# cargo-deny configuration: dependency policy, enforced in CI.
+# https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.9
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# The invariants the architecture depends on: no shells, no unexpected
+# crypto, no async runtime creep.
+deny = [
+    { crate = "openssl", reason = "TLS is rustls-only" },
+    { crate = "openssl-sys", reason = "TLS is rustls-only" },
+    { crate = "shell-words", reason = "dispatch is argv-only; nothing may build shell commands" },
+    { crate = "shlex", wrappers = ["cc"], reason = "dispatch is argv-only (cc uses it at build time only)" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

@@ -1,0 +1,21 @@
+[package]
+name = "murl-core"
+description = "Core library for mURL (Multi-Resource Uniform Locator): parser, manifest model, validator, resolver, policy engine, trust engine, and dispatch planning. No network and no process launching — those live behind traits implemented by embedders."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+ed25519-dalek = { workspace = true }
+sha2 = { workspace = true }
+base64 = { workspace = true }
+getrandom = { workspace = true }
+
+[lints]
+workspace = true

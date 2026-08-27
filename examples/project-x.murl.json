@@ -1,0 +1,70 @@
+{
+  "murlVersion": "0.1",
+  "id": "murl://local/demo/project-x",
+  "name": "Project X",
+  "description": "Everything that makes up the Project X development context.",
+  "version": "1.0.0",
+  "resources": [
+    {
+      "id": "source",
+      "kind": "https",
+      "target": "https://github.com/example/project-x",
+      "label": "Source (GitHub)",
+      "role": "source",
+      "order": 10
+    },
+    {
+      "id": "docs",
+      "kind": "https",
+      "target": "https://docs.example.com/project-x",
+      "label": "Documentation",
+      "role": "docs",
+      "order": 20
+    },
+    {
+      "id": "issues",
+      "kind": "https",
+      "target": "https://jira.example.com/projects/PX",
+      "label": "Issue tracker (Jira)",
+      "role": "issues",
+      "order": 30
+    },
+    {
+      "id": "monitoring",
+      "kind": "https",
+      "target": "https://grafana.example.com/d/project-x",
+      "label": "Monitoring (Grafana)",
+      "role": "monitoring",
+      "order": 40
+    },
+    {
+      "id": "workspace",
+      "kind": "dir",
+      "target": "~/projects/project-x",
+      "label": "Local workspace",
+      "role": "workspace",
+      "order": 50
+    },
+    {
+      "id": "term",
+      "kind": "terminal",
+      "target": "~/projects/project-x",
+      "label": "Terminal in the workspace",
+      "role": "terminal",
+      "order": 60,
+      "dependsOn": ["workspace"]
+    },
+    {
+      "id": "team",
+      "kind": "murl",
+      "target": "murl://local/demo/team",
+      "label": "Team context",
+      "order": 70
+    }
+  ],
+  "relations": [
+    { "from": "source", "rel": "documented-by", "to": "docs" },
+    { "from": "issues", "rel": "tracks", "to": "source" },
+    { "from": "monitoring", "rel": "observes", "to": "source" }
+  ]
+}
