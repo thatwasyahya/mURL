@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "rdp userinfo",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "remote-desktop",
+      "target": "rdp://user@host"
+    }
+  ]
+}

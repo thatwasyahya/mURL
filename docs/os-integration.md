@@ -67,18 +67,36 @@ re-validates it from scratch anyway.
 Console note: activation opens a console window for consent, the same
 compromise as Linux's `Terminal=true`, with the same fail-closed fallback.
 
-## macOS — documented stub
+## macOS — app bundle
 
 Launch Services reads URL scheme claims (`CFBundleURLTypes`) from an
 application bundle's `Info.plist` at registration time; **a bare CLI binary
-cannot claim a scheme**. `murl os install` on macOS therefore explains this
-and exits non-zero instead of pretending.
+cannot claim a scheme**, whatever it writes to disk. So mURL ships a
+bundle:
 
-The packaging plan (roadmap v0.4): a minimal `mURL.app` bundle whose
-executable execs `murl open %u`, distributed alongside the CLI (the bundle
-is ~two files of scaffolding around the same binary); `open`-based dispatch
-already works today via `OpenerConfig::platform_default("macos")`, so only
-registration needs the bundle.
+```bash
+packaging/macos/build-app.sh --release      # produces target/macos/mURL.app
+open target/macos/mURL.app                  # registers with Launch Services
+# or: lsregister -f target/macos/mURL.app
+open 'murl://local/project-x'
+```
+
+The bundle is scaffolding, not a second implementation: `Info.plist`
+declares the `murl` scheme, and `Contents/MacOS/mURL` is a three-line stub
+that `exec`s the bundled `murl open "$@"`. Launch Services hands the
+activated URL as `$1`; the stub passes it through unchanged, because the
+parser re-validates it from scratch and nothing in a shell wrapper should
+be interpreting attacker-supplied input. Every security property comes from
+the binary it wraps.
+
+`murl os install` on macOS still explains the bundle requirement and exits
+non-zero rather than pretending it registered something — the bundle script
+is the supported path. Dispatch itself has always worked on macOS via
+`open` (`OpenerConfig::platform_default("macos")`).
+
+Not yet done: notarized/stapled release artifacts, which need an Apple
+developer identity (roadmap v0.4). Until then, Gatekeeper will warn on a
+downloaded bundle; building locally avoids that entirely.
 
 ## Security notes common to all platforms
 

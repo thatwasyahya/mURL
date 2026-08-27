@@ -32,6 +32,46 @@ into the plan under the recursion limits (docs/resolution.md). Supports
 `integrity` pinning of the child manifest's exact bytes. This is the
 composition primitive: `team` inside `project-x`, `org` inside `team`.
 
+### `ssh` — a remote shell · DANGEROUS
+
+Target: `ssh://[user@]host[:port]`. Dispatch requires a configured handler:
+
+```bash
+murl handler set-ssh -- x-terminal-emulator -e ssh {target}
+```
+
+Userinfo is permitted here and **nowhere else** in mURL: an ssh target
+without a username is often unusable, and unlike a web URL there is no
+address-bar confusion to inherit — the target the plan shows is the target
+that connects, and connecting is DANGEROUS-tier regardless. The validator
+still refuses option smuggling (`ssh://-oProxyCommand=…@host`), a second
+`@`, and any character outside `[A-Za-z0-9._-]` in the username or
+`[A-Za-z0-9.-]` in the host.
+
+### `remote-desktop` — a remote GUI session · DANGEROUS
+
+Target: `rdp://host[:port]` or `vnc://host[:port]`. Userinfo is *not*
+allowed (these clients take credentials interactively). Handler:
+
+```bash
+murl handler set-remote-desktop -- xfreerdp {target}
+```
+
+### `geo` — a map location · SAFE
+
+Target: `geo:lat,lon[,alt][;u=radius]` (RFC 5870), range-checked
+(−90..90, −180..180). Dispatched to the platform opener → map viewer. SAFE
+because it conveys no capability: worst case, a map opens somewhere
+uninteresting.
+
+### `mailto` — a pre-addressed draft · SAFE
+
+Target: `mailto:addr[,addr][?subject=…&body=…&cc=…&to=…]` (RFC 6068).
+Headers are restricted to that safe list — a manifest may pre-fill a
+subject or body, but must not add a `bcc` the user won't notice, and no
+header a client might act on beyond composing. SAFE because composing is
+not sending: every mail client shows the draft first.
+
 ### `terminal` — a shell session · DANGEROUS
 
 Target: a directory path (the working directory). Dispatch requires a

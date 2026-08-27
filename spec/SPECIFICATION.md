@@ -203,7 +203,7 @@ Resolvers MUST treat `local` as reserved. The authorities `invalid`,
 | Member | Type | Req | Meaning |
 |---|---|---|---|
 | `id` | string | yes | `[a-z0-9][a-z0-9_-]{0,63}`, unique within the manifest. Selector-addressable. |
-| `kind` | string | yes | `https`, `file`, `dir`, `murl`, `terminal`, or `custom:<name>` with `<name>` = `[a-z0-9][a-z0-9_-]{0,31}`. |
+| `kind` | string | yes | `https`, `file`, `dir`, `murl`, `terminal`, `ssh`, `remote-desktop`, `geo`, `mailto`, or `custom:<name>` with `<name>` = `[a-z0-9][a-z0-9_-]{0,31}`. |
 | `target` | string | yes | Kind-specific, 1–2048 bytes, no control characters. See below. |
 | `label` | string | no | Human label, 1–120 chars. |
 | `role` | string | no | Semantic role, `[a-z0-9][a-z0-9-]{0,31}`. Open vocabulary; `source`, `docs`, `issues`, `monitoring`, `workspace` are conventional. |
@@ -224,7 +224,19 @@ Target validation per kind (MUST):
   forbidden — there is no "relative to what?" answer that survives
   OS-handler activation.
 * `murl` — a valid mURL. A selector on a nested mURL has no defined
-  semantics in v0.1 and MUST be ignored with a warning.
+  semantics and MUST be ignored with a warning.
+* `ssh` — `ssh://[user@]host[:port]`. Userinfo is permitted **only** for
+  this kind (an ssh target without a username is often unusable, and the
+  kind is DANGEROUS-tier regardless). Usernames match `[A-Za-z0-9._-]+`,
+  hosts `[A-Za-z0-9.-]+`; neither may begin with `-` (it would read as a
+  command-line option to a handler), and at most one `@` may appear.
+* `remote-desktop` — `rdp://host[:port]` or `vnc://host[:port]`. Userinfo
+  is forbidden.
+* `geo` — `geo:lat,lon[,alt][;param]` per RFC 5870; latitude MUST be within
+  −90..90 and longitude within −180..180.
+* `mailto` — `mailto:addr[,addr…][?headers]` per RFC 6068. Header names
+  MUST be one of `subject`, `body`, `cc`, `to`: a manifest may pre-fill a
+  message but MUST NOT be able to add recipients the user will not see.
 * `custom:<name>` — free-form (charset/length rules only). Dispatched only
   through a handler the user registered locally; unregistered custom kinds
   never launch.
@@ -419,9 +431,9 @@ Trust states: `LOCAL`, `UNSIGNED`, `SIGNED` (unknown key), `TRUSTED`
 
 | Tier | Kinds | Worst case |
 |---|---|---|
-| SAFE | `https` | a browser tab |
+| SAFE | `https`, `geo`, `mailto` | a browser tab, a map, an unsent draft |
 | SENSITIVE | `file`, `dir` (non-executable) | local data exposure |
-| DANGEROUS | `terminal`, `custom:*`, `file` with an executable extension (`.exe`, `.sh`, `.desktop`, `.lnk`, …) | code execution |
+| DANGEROUS | `terminal`, `ssh`, `remote-desktop`, `custom:*`, `file` with an executable extension (`.exe`, `.sh`, `.desktop`, `.lnk`, …) | code execution |
 
 "Opening" an executable or a `.desktop` file *is running it*; classification
 MUST reflect that.

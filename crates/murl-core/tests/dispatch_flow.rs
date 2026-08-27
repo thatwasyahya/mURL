@@ -18,6 +18,8 @@ fn opener() -> OpenerConfig {
     OpenerConfig {
         open_argv: vec!["xdg-open".into()],
         terminal_argv: None,
+        ssh_argv: None,
+        remote_desktop_argv: None,
         custom: BTreeMap::new(),
         home_dir: Some(PathBuf::from("/home/u")),
     }
@@ -134,6 +136,79 @@ fn custom_kind_requires_registration() {
             "https://vscode.dev/x".to_string()
         ]
     );
+}
+
+#[test]
+fn ssh_and_remote_desktop_require_configured_handlers() {
+    let env = Env::new("d-remote");
+    let m = manifest(
+        "P",
+        json!([
+            res("shell", "ssh", "ssh://deploy@host.example"),
+            res("desk", "remote-desktop", "rdp://desktop.example"),
+        ]),
+    );
+    env.add_local("murl://local/p", &bytes(&m));
+    let r = resolve(&env, "murl://local/p");
+
+    // Unconfigured: both fail, nothing launches.
+    let launcher = RecordingLauncher::default();
+    let approvals = vec![Approval::Approved; 2];
+    let report = execute(&r, &approvals, &opener(), &launcher, &env.limits).unwrap();
+    assert!(
+        launcher.launched.borrow().is_empty(),
+        "{:?}",
+        launcher.launched
+    );
+    assert!(report
+        .outcomes
+        .iter()
+        .all(|o| o.status == OutcomeStatus::Failed));
+
+    // Configured: the target is substituted into a single argv element, so
+    // a hostile-looking target can never become extra arguments.
+    let mut cfg = opener();
+    cfg.ssh_argv = Some(vec![
+        "term".into(),
+        "-e".into(),
+        "ssh".into(),
+        "{target}".into(),
+    ]);
+    cfg.remote_desktop_argv = Some(vec!["xfreerdp".into(), "{target}".into()]);
+    let launcher = RecordingLauncher::default();
+    let report = execute(&r, &approvals, &cfg, &launcher, &env.limits).unwrap();
+    assert_eq!(report.aggregate, AggregateStatus::Success);
+    let launched = launcher.launched.borrow();
+    assert_eq!(launched[0].0[3], "ssh://deploy@host.example");
+    assert_eq!(
+        launched[1].0,
+        vec!["xfreerdp".to_string(), "rdp://desktop.example".to_string()]
+    );
+}
+
+#[test]
+fn geo_and_mailto_go_to_the_platform_opener() {
+    let env = Env::new("d-uri");
+    let m = manifest(
+        "P",
+        json!([
+            res("where", "geo", "geo:48.8584,2.2945"),
+            res("mail", "mailto", "mailto:team@example.com?subject=Incident"),
+        ]),
+    );
+    env.add_local("murl://local/p", &bytes(&m));
+    let r = resolve(&env, "murl://local/p");
+
+    let launcher = RecordingLauncher::default();
+    let approvals = vec![Approval::Approved; 2];
+    let report = execute(&r, &approvals, &opener(), &launcher, &env.limits).unwrap();
+    assert_eq!(report.aggregate, AggregateStatus::Success);
+    let launched = launcher.launched.borrow();
+    assert_eq!(
+        launched[0].0,
+        vec!["xdg-open".to_string(), "geo:48.8584,2.2945".to_string()]
+    );
+    assert_eq!(launched[1].0[1], "mailto:team@example.com?subject=Incident");
 }
 
 #[test]

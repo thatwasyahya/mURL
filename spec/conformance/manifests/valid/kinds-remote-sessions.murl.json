@@ -1,0 +1,21 @@
+{
+  "murlVersion": "0.2",
+  "name": "Remote sessions",
+  "resources": [
+    {
+      "id": "shell",
+      "kind": "ssh",
+      "target": "ssh://deploy@bastion.example:2222"
+    },
+    {
+      "id": "desk",
+      "kind": "remote-desktop",
+      "target": "rdp://desktop.example"
+    },
+    {
+      "id": "vnc",
+      "kind": "remote-desktop",
+      "target": "vnc://10.0.0.9:5901"
+    }
+  ]
+}

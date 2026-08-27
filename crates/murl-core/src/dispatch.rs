@@ -42,6 +42,11 @@ pub struct OpenerConfig {
     /// Handler for `terminal` resources. `{target}` is substituted with the
     /// working directory. Unset means terminal resources cannot dispatch.
     pub terminal_argv: Option<Vec<String>>,
+    /// Handler for `ssh` resources. `{target}` is the full `ssh://…` URL.
+    /// Unset means ssh resources cannot dispatch — no guessing.
+    pub ssh_argv: Option<Vec<String>>,
+    /// Handler for `remote-desktop` resources (`rdp://` / `vnc://`).
+    pub remote_desktop_argv: Option<Vec<String>>,
     /// Handlers for `custom:<name>` kinds, keyed by name (without prefix).
     pub custom: BTreeMap<String, Vec<String>>,
     /// Home directory used for `~` expansion in path targets.
@@ -62,6 +67,8 @@ impl OpenerConfig {
         OpenerConfig {
             open_argv,
             terminal_argv: None,
+            ssh_argv: None,
+            remote_desktop_argv: None,
             custom: BTreeMap::new(),
             home_dir,
         }
@@ -280,6 +287,33 @@ fn dispatch_one(
                 }
             }
         },
+        // Remote sessions need an explicitly configured client: guessing a
+        // command that receives credentials would be exactly the wrong
+        // instinct. Both are DANGEROUS-tier, so they also required trust and
+        // consent before reaching here.
+        Kind::Ssh => match &opener.ssh_argv {
+            None => (
+                OutcomeStatus::Failed,
+                Some("no ssh handler configured (murl handler set-ssh)".into()),
+            ),
+            Some(template) => launch(launcher, &substitute(template, target), None),
+        },
+        Kind::RemoteDesktop => match &opener.remote_desktop_argv {
+            None => (
+                OutcomeStatus::Failed,
+                Some(
+                    "no remote-desktop handler configured (murl handler set-remote-desktop)".into(),
+                ),
+            ),
+            Some(template) => launch(launcher, &substitute(template, target), None),
+        },
+        // Map locations and mail drafts go to the platform opener like any
+        // other URI: the OS already knows which app handles them.
+        Kind::Geo | Kind::Mailto => {
+            let mut argv = opener.open_argv.clone();
+            argv.push(target.clone());
+            launch(launcher, &argv, None)
+        }
         // Containers are spliced during resolution and never dispatched;
         // this arm is defense in depth.
         Kind::Murl => (OutcomeStatus::Skipped, Some("container resource".into())),

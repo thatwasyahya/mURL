@@ -19,6 +19,39 @@ fn validate_argv(argv: &[String]) -> Result<()> {
     Ok(())
 }
 
+/// `murl handler set-ssh <argv...>` — the client for `ssh` resources.
+pub fn set_ssh(app: &App, argv: &[String]) -> Result<i32> {
+    validate_argv(argv)?;
+    let path = app.paths.handlers_file();
+    let mut handlers = load_handlers(&path)?;
+    handlers.ssh = Some(argv.to_vec());
+    save_handlers(&path, &handlers)?;
+    println!("ssh handler set: {argv:?}");
+    note_target_placeholder(argv, "the ssh:// URL");
+    Ok(0)
+}
+
+/// `murl handler set-remote-desktop <argv...>` — the client for
+/// `remote-desktop` resources.
+pub fn set_remote_desktop(app: &App, argv: &[String]) -> Result<i32> {
+    validate_argv(argv)?;
+    let path = app.paths.handlers_file();
+    let mut handlers = load_handlers(&path)?;
+    handlers.remote_desktop = Some(argv.to_vec());
+    save_handlers(&path, &handlers)?;
+    println!("remote-desktop handler set: {argv:?}");
+    note_target_placeholder(argv, "the rdp:// or vnc:// URL");
+    Ok(0)
+}
+
+fn note_target_placeholder(argv: &[String], what: &str) {
+    if !argv.iter().any(|a| a.contains("{target}")) {
+        println!(
+            "note: no element contains {{target}}; {what} will be appended as the last argument"
+        );
+    }
+}
+
 pub fn set_terminal(app: &App, argv: &[String]) -> Result<i32> {
     validate_argv(argv)?;
     let path = app.paths.handlers_file();
@@ -58,6 +91,14 @@ pub fn list(app: &App) -> Result<i32> {
     match &handlers.terminal {
         Some(argv) => println!("terminal: {argv:?}"),
         None => println!("terminal: (unset — terminal resources cannot dispatch)"),
+    }
+    match &handlers.ssh {
+        Some(argv) => println!("ssh:      {argv:?}"),
+        None => println!("ssh:      (unset — ssh resources cannot dispatch)"),
+    }
+    match &handlers.remote_desktop {
+        Some(argv) => println!("rdesktop: {argv:?}"),
+        None => println!("rdesktop: (unset — remote-desktop resources cannot dispatch)"),
     }
     if handlers.custom.is_empty() {
         println!("custom:   (none)");

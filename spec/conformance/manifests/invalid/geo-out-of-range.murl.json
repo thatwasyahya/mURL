@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "geo range",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "geo",
+      "target": "geo:91,0"
+    }
+  ]
+}

@@ -53,6 +53,13 @@ pub fn classify(kind: &Kind, target: &str) -> Tier {
             }
         }
         Kind::Terminal => Tier::Dangerous,
+        // A remote shell is arbitrary code execution wherever it lands, and
+        // a remote desktop is the same with pixels. Both also carry
+        // credentials into a host the manifest chose.
+        Kind::Ssh | Kind::RemoteDesktop => Tier::Dangerous,
+        // A map location and a pre-filled draft carry no capability:
+        // composing is not sending, and every client shows the draft.
+        Kind::Geo | Kind::Mailto => Tier::Safe,
         Kind::Custom(_) => Tier::Dangerous,
     }
 }
@@ -223,6 +230,13 @@ mod tests {
         assert_eq!(classify(&Kind::File, "/home/u/a.sh"), Tier::Dangerous);
         assert_eq!(classify(&Kind::File, "/home/u/a.desktop"), Tier::Dangerous);
         assert_eq!(classify(&Kind::Terminal, "/home/u/p"), Tier::Dangerous);
+        assert_eq!(classify(&Kind::Ssh, "ssh://host"), Tier::Dangerous);
+        assert_eq!(
+            classify(&Kind::RemoteDesktop, "rdp://host"),
+            Tier::Dangerous
+        );
+        assert_eq!(classify(&Kind::Geo, "geo:48.85,2.35"), Tier::Safe);
+        assert_eq!(classify(&Kind::Mailto, "mailto:a@e.com"), Tier::Safe);
         assert_eq!(
             classify(&Kind::Custom("x".into()), "anything"),
             Tier::Dangerous

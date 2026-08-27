@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "ssh scheme",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "ssh",
+      "target": "http://host"
+    }
+  ]
+}

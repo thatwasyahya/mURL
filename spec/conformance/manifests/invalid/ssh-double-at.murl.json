@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "ssh at",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "ssh",
+      "target": "ssh://a@b@c"
+    }
+  ]
+}

@@ -40,24 +40,33 @@ Focus: make the *format* trustworthy enough to freeze.
 - [x] `murl create --interactive`; `murl export`/`import` bundles
       (verbatim bytes + integrity, imports land in the local namespace)
 
-## v0.3 — the daemon and real consent UX
+## v0.3 — the daemon and real consent UX ✅ shipped
 
 Focus: replace the terminal consent compromise.
 
-- [ ] `murl-daemon`: single instance, socket-activated; CLI and OS handler
-      become thin clients (core crate unchanged — that's why it's split)
-- [ ] Native consent dialog (GTK/portal on Linux; Windows dialog), showing
-      the plan with tier grouping and per-resource toggles
+- [x] `murl-daemon`: user-private socket, single-instance (refuses to
+      clobber a live socket), transport-free request handler; the CLI is a
+      thin client with `--daemon`/`--no-daemon` and silent fallback
+- [x] IPC threat model (D-1 … D-7) written **before** the implementation,
+      as the gate required — `docs/daemon.md`
+- [x] `ConsentUi` abstraction with a terminal implementation; a GUI drops
+      in without touching the protocol or the security model. A test drives
+      a deliberately rogue surface to prove policy denials survive it
+- [x] `murl-net` extracted so CLI and daemon share one hardened fetcher
+- [ ] Native GTK/portal dialog and Windows named-pipe transport (the
+      remaining surface work; the abstraction and protocol are in place)
 - [ ] Background cache refresh + `expires` notifications
-- [ ] D-Bus service on Linux; named-pipe IPC on Windows — IPC surface gets
-      its own threat-model chapter *before* implementation
 
-## v0.4 — platform completeness
+## v0.4 — platform completeness ✅ shipped (except notarization)
 
-- [ ] macOS app-bundle registration (`mURL.app` wrapping the CLI) + notarized
-      release artifacts
-- [ ] New built-in kind candidates, each with a security review: `ssh`
-      (DANGEROUS), `rdp`/`vnc` (DANGEROUS), `geo`, `mailto`-equivalent
+- [x] macOS app-bundle registration: `packaging/macos/build-app.sh` +
+      `Info.plist.in` produce `mURL.app`, the only way Launch Services will
+      accept a scheme claim
+- [x] New built-in kinds, each with a security review and conformance
+      vectors: `ssh` (DANGEROUS, handler-gated, option-smuggling refused),
+      `remote-desktop` (DANGEROUS, no userinfo), `geo` (SAFE,
+      range-checked), `mailto` (SAFE, header allow-list)
+- [ ] Notarized macOS release artifacts (needs an Apple developer identity)
 - [ ] Handler discovery quality-of-life (detect common terminals; still
       explicit opt-in)
 - [ ] Localization of consent surfaces

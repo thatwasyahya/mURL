@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "mailto addr",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "mailto",
+      "target": "mailto:nope"
+    }
+  ]
+}

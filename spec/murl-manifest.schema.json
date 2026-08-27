@@ -63,7 +63,7 @@
         "id": { "$ref": "#/$defs/resourceId" },
         "kind": {
           "type": "string",
-          "pattern": "^(https|file|dir|murl|terminal|custom:[a-z0-9][a-z0-9_-]{0,31})$"
+          "pattern": "^(https|file|dir|murl|terminal|ssh|remote-desktop|geo|mailto|custom:[a-z0-9][a-z0-9_-]{0,31})$"
         },
         "target": {
           "type": "string",

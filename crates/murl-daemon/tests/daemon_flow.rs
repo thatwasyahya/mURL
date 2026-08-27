@@ -122,6 +122,8 @@ fn exchange(
     let opener = OpenerConfig {
         open_argv: vec!["stub-open".into()],
         terminal_argv: Some(vec!["stub-term".into(), "{target}".into()]),
+        ssh_argv: Some(vec!["stub-ssh".into(), "{target}".into()]),
+        remote_desktop_argv: None,
         custom: Default::default(),
         home_dir: Some(env.root.clone()),
     };

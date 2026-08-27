@@ -26,6 +26,19 @@ pub enum Kind {
     /// A terminal session rooted at a directory. Requires a user-configured
     /// terminal handler and is always DANGEROUS.
     Terminal,
+    /// A remote shell session (`ssh://[user@]host[:port]`). Requires a
+    /// user-configured handler and is always DANGEROUS: a remote shell is
+    /// arbitrary code execution wherever it lands.
+    Ssh,
+    /// A remote desktop session (`rdp://host` / `vnc://host`). Requires a
+    /// user-configured handler; DANGEROUS for the same reason as `ssh`.
+    RemoteDesktop,
+    /// A geographic location (`geo:lat,lon[;u=radius]`, RFC 5870). SAFE: it
+    /// opens a map viewer and carries no capability.
+    Geo,
+    /// A pre-addressed message (`mailto:` per RFC 6068). SAFE: composing is
+    /// not sending, and every mail client shows the draft first.
+    Mailto,
     /// An extension kind (`custom:<name>`). Dispatched only via a handler the
     /// user registered out-of-band; unregistered custom kinds never launch.
     Custom(String),
@@ -42,6 +55,10 @@ impl Kind {
             "dir" => Ok(Kind::Dir),
             "murl" => Ok(Kind::Murl),
             "terminal" => Ok(Kind::Terminal),
+            "ssh" => Ok(Kind::Ssh),
+            "remote-desktop" => Ok(Kind::RemoteDesktop),
+            "geo" => Ok(Kind::Geo),
+            "mailto" => Ok(Kind::Mailto),
             other => {
                 if let Some(name) = other.strip_prefix("custom:") {
                     if name.is_empty() || name.len() > Self::MAX_CUSTOM_NAME {
@@ -63,7 +80,7 @@ impl Kind {
                     Ok(Kind::Custom(name.to_owned()))
                 } else {
                     Err(format!(
-                        "unknown kind `{other}` (known: https, file, dir, murl, terminal, custom:<name>)"
+                        "unknown kind `{other}` (known: https, file, dir, murl, terminal, ssh, remote-desktop, geo, mailto, custom:<name>)"
                     ))
                 }
             }
@@ -84,6 +101,10 @@ impl fmt::Display for Kind {
             Kind::Dir => f.write_str("dir"),
             Kind::Murl => f.write_str("murl"),
             Kind::Terminal => f.write_str("terminal"),
+            Kind::Ssh => f.write_str("ssh"),
+            Kind::RemoteDesktop => f.write_str("remote-desktop"),
+            Kind::Geo => f.write_str("geo"),
+            Kind::Mailto => f.write_str("mailto"),
             Kind::Custom(name) => write!(f, "custom:{name}"),
         }
     }
@@ -116,6 +137,10 @@ mod tests {
     fn parses_builtin_kinds() {
         assert_eq!(Kind::parse("https").unwrap(), Kind::Https);
         assert_eq!(Kind::parse("terminal").unwrap(), Kind::Terminal);
+        assert_eq!(Kind::parse("ssh").unwrap(), Kind::Ssh);
+        assert_eq!(Kind::parse("remote-desktop").unwrap(), Kind::RemoteDesktop);
+        assert_eq!(Kind::parse("geo").unwrap(), Kind::Geo);
+        assert_eq!(Kind::parse("mailto").unwrap(), Kind::Mailto);
         assert_eq!(
             Kind::parse("custom:vscode").unwrap(),
             Kind::Custom("vscode".into())
@@ -135,7 +160,18 @@ mod tests {
 
     #[test]
     fn roundtrips_display() {
-        for s in ["https", "file", "dir", "murl", "terminal", "custom:my-app"] {
+        for s in [
+            "https",
+            "file",
+            "dir",
+            "murl",
+            "terminal",
+            "ssh",
+            "remote-desktop",
+            "geo",
+            "mailto",
+            "custom:my-app",
+        ] {
             assert_eq!(Kind::parse(s).unwrap().to_string(), s);
         }
     }

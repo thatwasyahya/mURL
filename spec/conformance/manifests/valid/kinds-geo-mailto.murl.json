@@ -1,0 +1,16 @@
+{
+  "murlVersion": "0.2",
+  "name": "Location and contact",
+  "resources": [
+    {
+      "id": "site",
+      "kind": "geo",
+      "target": "geo:48.8584,2.2945;u=35"
+    },
+    {
+      "id": "oncall",
+      "kind": "mailto",
+      "target": "mailto:oncall@example.com?subject=Incident&body=Details"
+    }
+  ]
+}

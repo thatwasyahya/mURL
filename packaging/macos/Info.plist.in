@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>mURL</string>
+    <key>CFBundleDisplayName</key>
+    <string>mURL Resolver</string>
+    <key>CFBundleIdentifier</key>
+    <string>dev.murl.resolver</string>
+    <key>CFBundleVersion</key>
+    <string>@VERSION@</string>
+    <key>CFBundleShortVersionString</key>
+    <string>@VERSION@</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>mURL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>11.0</string>
+
+    <!-- The whole reason this bundle exists: Launch Services reads scheme
+         claims from here, and only from an application bundle. -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>mURL Multi-Resource Locator</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>murl</string>
+            </array>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+        </dict>
+    </array>
+
+    <!-- Consent needs a terminal until the native dialog lands (roadmap);
+         LSUIElement keeps the wrapper out of the Dock meanwhile. -->
+    <key>LSUIElement</key>
+    <true/>
+</dict>
+</plist>

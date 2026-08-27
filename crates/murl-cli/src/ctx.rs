@@ -39,6 +39,10 @@ pub struct HandlersFile {
     pub open: Option<Vec<String>>,
     /// Terminal handler argv; `{target}` is the working directory.
     pub terminal: Option<Vec<String>>,
+    /// ssh handler argv; `{target}` is the full ssh:// URL.
+    pub ssh: Option<Vec<String>>,
+    /// remote-desktop handler argv; `{target}` is the rdp:// or vnc:// URL.
+    pub remote_desktop: Option<Vec<String>>,
     /// Handlers for `custom:<name>` kinds.
     pub custom: BTreeMap<String, Vec<String>>,
 }
@@ -110,6 +114,8 @@ impl App {
             opener.open_argv = open;
         }
         opener.terminal_argv = handlers.terminal;
+        opener.ssh_argv = handlers.ssh;
+        opener.remote_desktop_argv = handlers.remote_desktop;
         opener.custom = handlers.custom;
 
         let store = LocalStore::new(paths.names_dir());

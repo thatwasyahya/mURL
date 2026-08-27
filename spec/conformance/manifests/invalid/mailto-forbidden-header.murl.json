@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "mailto bcc",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "mailto",
+      "target": "mailto:t@e.com?bcc=attacker@evil.example"
+    }
+  ]
+}

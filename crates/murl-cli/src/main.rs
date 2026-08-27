@@ -238,6 +238,18 @@ enum HandlerCmd {
         #[arg(trailing_var_arg = true, required = true)]
         argv: Vec<String>,
     },
+    /// Set the ssh handler argv; use {target} for the ssh:// URL.
+    /// Example: murl handler set-ssh -- x-terminal-emulator -e ssh {target}
+    SetSsh {
+        #[arg(trailing_var_arg = true, required = true)]
+        argv: Vec<String>,
+    },
+    /// Set the remote-desktop handler argv; use {target} for the URL.
+    /// Example: murl handler set-remote-desktop -- xfreerdp {target}
+    SetRemoteDesktop {
+        #[arg(trailing_var_arg = true, required = true)]
+        argv: Vec<String>,
+    },
     /// Register a handler for a custom kind.
     /// Example: murl handler register vscode -- code --folder-uri {target}
     Register {
@@ -358,6 +370,10 @@ fn run(cli: &Cli) -> murl_core::Result<i32> {
         },
         Command::Handler(sub) => match sub {
             HandlerCmd::SetTerminal { argv } => commands::handler_cmd::set_terminal(&app, argv),
+            HandlerCmd::SetSsh { argv } => commands::handler_cmd::set_ssh(&app, argv),
+            HandlerCmd::SetRemoteDesktop { argv } => {
+                commands::handler_cmd::set_remote_desktop(&app, argv)
+            }
             HandlerCmd::Register { kind, argv } => {
                 commands::handler_cmd::register(&app, kind, argv)
             }
