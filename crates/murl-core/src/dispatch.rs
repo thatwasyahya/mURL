@@ -165,6 +165,12 @@ pub enum AggregateStatus {
     /// Every non-skipped resource opened.
     Success,
     /// Some opened, some did not; no required resource failed.
+    ///
+    /// The wire name is `PARTIAL_SUCCESS`, matching the specification and
+    /// the `Display` impl. They disagreed once — serde derived `PARTIAL`
+    /// from the variant name — and a consumer that matched on the
+    /// documented string silently fell through to its error branch.
+    #[serde(rename = "PARTIAL_SUCCESS")]
     Partial,
     /// A required resource did not open, or nothing opened and something failed.
     Failed,
@@ -481,5 +487,50 @@ mod tests {
         assert_eq!(cfg.expand_path("/abs").unwrap(), PathBuf::from("/abs"));
         let no_home = OpenerConfig::default();
         assert!(no_home.expand_path("~/p").is_err());
+    }
+}
+
+#[cfg(test)]
+mod status_naming_tests {
+    use super::*;
+
+    /// The JSON name, the Display name, and the specification must agree.
+    /// They did not once: serde emitted `PARTIAL` while everything else
+    /// said `PARTIAL_SUCCESS`, so a JSON consumer matching the documented
+    /// string fell through to its error branch and reported failure for a
+    /// partially successful activation.
+    #[test]
+    fn wire_names_match_display_names() {
+        for status in [
+            AggregateStatus::Success,
+            AggregateStatus::Partial,
+            AggregateStatus::Failed,
+            AggregateStatus::Denied,
+        ] {
+            let json = serde_json::to_string(&status).unwrap();
+            assert_eq!(
+                json.trim_matches(0x22 as char),
+                status.to_string(),
+                "wire and display names differ for {status:?}"
+            );
+        }
+        assert_eq!(
+            serde_json::to_string(&AggregateStatus::Partial).unwrap(),
+            "\"PARTIAL_SUCCESS\""
+        );
+    }
+
+    #[test]
+    fn outcome_status_wire_names_match_display_names() {
+        for status in [
+            OutcomeStatus::Opened,
+            OutcomeStatus::Skipped,
+            OutcomeStatus::Denied,
+            OutcomeStatus::Failed,
+            OutcomeStatus::Unavailable,
+        ] {
+            let json = serde_json::to_string(&status).unwrap();
+            assert_eq!(json.trim_matches(0x22 as char), status.to_string());
+        }
     }
 }

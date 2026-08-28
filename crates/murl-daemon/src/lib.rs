@@ -19,11 +19,13 @@
 
 pub mod client;
 pub mod consent_ui;
+pub mod dialog_ui;
 pub mod protocol;
 pub mod server;
 pub mod socket;
 pub mod terminal_ui;
 
 pub use consent_ui::{ConsentItem, ConsentRequest, ConsentUi, DenyAllUi};
+pub use dialog_ui::DialogUi;
 pub use protocol::{Request, Response, PROTOCOL_VERSION};
 pub use server::{handle_request, serve_connection, Context};

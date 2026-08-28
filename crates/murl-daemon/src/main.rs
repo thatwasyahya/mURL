@@ -20,6 +20,8 @@ use murl_core::time::{Clock, SystemClock};
 use murl_core::trust::TrustStore;
 
 use murl_daemon::client;
+use murl_daemon::consent_ui::ConsentUi;
+use murl_daemon::dialog_ui::DialogUi;
 use murl_daemon::protocol::{Request, Response, PROTOCOL_VERSION};
 use murl_daemon::server::{self, Context};
 use murl_daemon::socket;
@@ -148,7 +150,26 @@ fn serve(path: &std::path::Path) -> Result<i32> {
     let opener = handlers.to_opener(std::env::consts::OS, dirs.home.clone());
     let clock = SystemClock;
     let launcher = launcher::RealLauncher;
-    let consent = TerminalUi;
+
+    // Prefer a native dialog: the whole reason the daemon exists is that an
+    // activation arriving from a chat client or a browser has no terminal to
+    // ask in, and on macOS it never does. Fall back to the terminal, which
+    // falls back to denial — the chain only gets stricter.
+    let dialog = DialogUi::detect();
+    let terminal = TerminalUi;
+    let consent: &dyn ConsentUi = match &dialog {
+        Some(ui) => {
+            eprintln!("murl-daemon: consent surface: {}", ui.describe());
+            ui
+        }
+        None => {
+            eprintln!(
+                "murl-daemon: consent surface: terminal (no desktop dialog helper found; \
+                 install zenity or kdialog for activations that have no terminal)"
+            );
+            &terminal
+        }
+    };
     let fetcher = murl_net::HttpsFetcher::with_trace(|message| {
         eprintln!("murl-daemon: {message}");
     });
@@ -171,7 +192,7 @@ fn serve(path: &std::path::Path) -> Result<i32> {
         policy,
         opener,
         launcher: &launcher,
-        consent: &consent,
+        consent,
         limits,
         started_at: clock.now_epoch(),
         socket: path.display().to_string(),

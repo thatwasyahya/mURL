@@ -129,11 +129,40 @@ initiates. Consent decisions are made **inside** the daemon (by its UI), so
 a client cannot pre-approve anything on the user's behalf — a client asking
 to activate is asking for a dialog, not for a launch.
 
+## The consent surface
+
+At startup the daemon picks the best surface available and says which one it
+chose:
+
+```text
+murl-daemon: consent surface: zenity (/usr/bin/zenity)
+```
+
+The order is: a **native dialog** (`zenity`, `kdialog`, or `osascript` on
+macOS, requiring a display), then the **terminal**, then **denial**. The
+chain only ever gets stricter — a missing surface can never become a
+permissive one.
+
+The dialog is built on the helper each desktop already ships rather than on
+a toolkit dependency, and it keeps three properties:
+
+* **No shell and no generated script.** Backends are invoked as argv
+  arrays. For `osascript` the AppleScript source is a *constant* and the
+  plan travels in `argv`; interpolating a target into script text would be
+  the same mistake as building a shell command, one language over.
+* **The dialog returns resource ids and nothing else.** Ids are
+  `[a-z0-9][a-z0-9_-]*`, so a returned line cannot be confused with a
+  separator or another resource's text — and anything returned that was
+  not offered is discarded. A backend cannot grant what policy denied.
+* **Every failure is a denial**: no backend, a crash, a closed window, an
+  unanswered prompt (180 s), or unparseable output.
+
+Nothing is pre-checked. Consent starts from no.
+
 ## Status
 
 The daemon is **experimental** and ships as its own binary. The CLI's
 `--daemon`/`--no-daemon` flags select the path explicitly; the default is to
-try the daemon and fall back silently. The consent UI abstraction
-(`ConsentUi`) has a terminal implementation today and a GUI implementation
-per platform as it lands — the point of the abstraction is that neither the
-protocol nor the security model changes when the pixels do.
+try the daemon and fall back silently. The `ConsentUi` abstraction is what
+made the dialog a drop-in: neither the protocol nor the security model
+changed when the pixels arrived.

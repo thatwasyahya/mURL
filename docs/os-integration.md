@@ -94,23 +94,25 @@ non-zero rather than pretending it registered something — the bundle script
 is the supported path. Dispatch itself has always worked on macOS via
 `open` (`OpenerConfig::platform_default("macos")`).
 
-**Known limitation — macOS activation currently denies everything.** A
-Launch Services activation runs the bundle's executable with no controlling
-terminal, and consent without a way to ask is a refusal (that is the
-fail-closed rule, working as designed). Linux sidesteps this with
-`Terminal=true` and Windows with a console window; macOS bundles have no
-equivalent, so `open 'murl://local/x'` resolves, prints the plan, and exits
-`4` (DENIED) rather than opening anything.
+**Run the daemon on macOS.** A Launch Services activation has no controlling
+terminal, so a terminal prompt could only ever refuse. With `murl-daemon`
+running, consent is a native dialog instead (`osascript`, which every macOS
+install has), and activation works properly:
 
-That makes macOS registration a **preview**: correct and safe, but not yet
-useful for anything that needs consent. Two ways out, both on the roadmap
-and neither faked here — the native consent dialog (v0.3's remaining work,
-which is exactly what the `ConsentUi` abstraction exists for), or a policy
-of `"safe": "allow"` for users who accept that trade for SAFE resources.
-Wrapping the launcher in a Terminal.app invocation was considered and
+```bash
+murl-daemon run &          # or install the LaunchAgent, below
+open 'murl://local/project-x'
+```
+
+Without the daemon, macOS activation resolves, prints the plan, and exits
+`4` (DENIED) — fail-closed, correct, and not useful. That is why the
+LaunchAgent matters more here than on other platforms.
+
+Wrapping the launcher stub in a Terminal.app invocation was considered and
 rejected: it means writing the activated URL into a script for another
 program to re-interpret, which is precisely the shell-shaped surface this
-project refuses to have.
+project refuses to have. `osascript` avoids it because the AppleScript
+source is a **constant** and the plan travels in `argv`.
 
 Not yet done either: notarized/stapled release artifacts, which need an
 Apple developer identity (roadmap v0.4). Until then, Gatekeeper will warn on

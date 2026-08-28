@@ -53,8 +53,14 @@ Focus: replace the terminal consent compromise.
       in without touching the protocol or the security model. A test drives
       a deliberately rogue surface to prove policy denials survive it
 - [x] `murl-net` extracted so CLI and daemon share one hardened fetcher
-- [ ] Native GTK/portal dialog and Windows named-pipe transport (the
-      remaining surface work; the abstraction and protocol are in place)
+- [x] **Native consent dialog**, built on the helper each desktop already
+      ships (`zenity`, `kdialog`, `osascript`) rather than a toolkit
+      dependency. The AppleScript source is a constant and the plan travels
+      in argv; the dialog returns resource ids only; every failure mode —
+      no backend, crash, closed window, 180 s timeout, unparseable output —
+      is a denial. This also unblocked macOS, where an activation never has
+      a terminal.
+- [ ] Windows named-pipe transport (the console path works there today)
 - [ ] Background cache refresh + `expires` notifications
 
 ## v0.4 — platform completeness ✅ shipped (except notarization)
