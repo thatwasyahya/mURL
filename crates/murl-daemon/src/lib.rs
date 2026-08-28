@@ -22,6 +22,7 @@ pub mod consent_ui;
 pub mod dialog_ui;
 pub mod protocol;
 pub mod server;
+pub mod service;
 pub mod socket;
 pub mod terminal_ui;
 

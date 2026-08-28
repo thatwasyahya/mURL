@@ -24,6 +24,7 @@ use murl_daemon::consent_ui::ConsentUi;
 use murl_daemon::dialog_ui::DialogUi;
 use murl_daemon::protocol::{Request, Response, PROTOCOL_VERSION};
 use murl_daemon::server::{self, Context};
+use murl_daemon::service;
 use murl_daemon::socket;
 use murl_daemon::terminal_ui::TerminalUi;
 
@@ -60,6 +61,20 @@ enum Command {
     },
     /// Print the socket path this daemon would use
     Path,
+    /// Install, remove, or check the per-user service unit so the daemon
+    /// starts on login. Per-user only, never system-wide.
+    #[command(subcommand)]
+    Service(ServiceCmd),
+}
+
+#[derive(Subcommand)]
+enum ServiceCmd {
+    /// Write the systemd user unit (Linux) or LaunchAgent (macOS)
+    Install,
+    /// Remove it
+    Uninstall,
+    /// Show whether it is installed and whether a daemon is answering
+    Status,
 }
 
 fn main() {
@@ -81,6 +96,11 @@ fn run(cli: &Cli) -> Result<i32> {
             Ok(0)
         }
         Command::Status { socket: path } => status(path.clone()),
+        Command::Service(sub) => match sub {
+            ServiceCmd::Install => service::install(),
+            ServiceCmd::Uninstall => service::uninstall(),
+            ServiceCmd::Status => service::status(),
+        },
         Command::Run { socket: path } => {
             let path = match path {
                 Some(p) => p.clone(),
