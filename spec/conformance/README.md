@@ -17,6 +17,7 @@ manifests/valid/*.murl.json     must parse AND validate with zero errors
 manifests/invalid/*.murl.json   must fail parsing, OR produce >=1 error
 murls/valid.txt                 one mURL per line; each must parse
 murls/invalid.txt               one mURL per line; each must be rejected
+canonical/<name>.input.json     canonicalizes to exactly <name>.expected
 ```
 
 Filenames name the feature (valid) or the violated rule (invalid) — a failing
@@ -35,6 +36,15 @@ vector tells you what broke without opening it.
    form must yield an equal value. Note some vectors are deliberately
    non-canonical on input (uppercase scheme/authority) and must normalize.
 4. **Invalid mURLs**: rejected. No repair, no guessing.
+5. **Canonical form**: each `canonical/<name>.input.json` must canonicalize
+   (spec §7.1) to the **exact bytes** of `canonical/<name>.expected` — no
+   trailing newline, no whitespace, member order and escaping as specified.
+
+Rule 5 was added after a second implementation passed rules 1–4 with an
+untested canonical form. Signatures are the one place where "close enough"
+means "verifies nowhere else", and the suite had not been checking it. The
+inputs are deliberately *not* canonical — wrong member order, indented — so
+an implementation that echoes its input fails.
 
 Validation is a *static* check: it never consults the clock or the network.
 A vector with `notBefore`/`expires` in the past or future is still valid if

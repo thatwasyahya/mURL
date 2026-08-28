@@ -1,0 +1,21 @@
+{
+  "murlVersion": "0.2",
+  "id": "murl://local/project-x",
+  "name": "Project X",
+  "resources": [
+    {
+      "id": "docs",
+      "kind": "https",
+      "target": "https://docs.example/x",
+      "order": 10
+    },
+    {
+      "id": "workspace",
+      "kind": "dir",
+      "target": "~/projects/x",
+      "tags": [
+        "dev"
+      ]
+    }
+  ]
+}

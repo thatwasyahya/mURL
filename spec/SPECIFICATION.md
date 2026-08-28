@@ -377,19 +377,48 @@ seven resources.
 
 ### 7.1 MCF-1 (mURL Canonical Form 1)
 
-The byte form that hashes and signatures cover:
+The byte form that hashes and signatures cover. Every rule here is
+MUST-level and exact to the byte: one character of disagreement between two
+implementations means every signature one produces is unverifiable by the
+other.
 
-* Object members sorted by Unicode code point of the member name.
-* No insignificant whitespace.
-* String escaping: `\" \\ \b \f \n \r \t`, `\u00XX` for other control
-  characters; all other characters as raw UTF-8.
-* Numbers MUST be integers within `i64`/`u64`, emitted in plain decimal.
-  Non-integer numbers are invalid in manifests.
+* **Member order**: object members sorted ascending by the **Unicode code
+  point** sequence of the member name (equivalently, by the UTF-8 byte
+  sequence — the two orderings are identical).
+* **Whitespace**: none. No space after `:` or `,`, no trailing newline.
+* **String escaping**, and nothing else escaped:
+  * `\"` `\\` `\b` `\f` `\n` `\r` `\t` for those seven characters;
+  * `\u00xx` for every other character below U+0020, with **lowercase**
+    hexadecimal digits (`\u001f`, never `\u001F`);
+  * every other character, **including U+007F (DEL)** and every non-ASCII
+    character, emitted as raw UTF-8 — never escaped.
+* **Numbers** MUST be integers representable in `i64` or `u64`, emitted in
+  plain decimal with no sign for positives, no leading zeros, no exponent
+  and no fraction. Non-integer numbers, `NaN`, and infinities are invalid
+  in manifests (§5.1) and MUST NOT be canonicalized.
 
-MCF-1 output is byte-identical to RFC 8785 (JCS) for every document the
-manifest schema allows. It deliberately rejects floats — the hardest part of
-JCS to reimplement identically — because a canonical form that is easy to
-get wrong produces signatures that are easy to break accidentally.
+Rejecting floats is deliberate: number formatting is the hardest part of
+RFC 8785 to reimplement identically, and a canonical form that is easy to
+get subtly wrong produces signatures that break for reasons nobody can see.
+
+**Relationship to RFC 8785 (JCS).** MCF-1 agrees with JCS on every document
+this specification's schema is *expected* to carry, but the two are **not
+unconditionally identical**, and an implementer must not substitute a JCS
+library without checking:
+
+* JCS sorts member names by **UTF-16 code unit**; MCF-1 sorts by **code
+  point**. These differ only when one document contains both a member name
+  above U+FFFF and another in U+E000–U+FFFF — reachable in principle,
+  because `meta` is free-form and unknown members are permitted for forward
+  compatibility (§5.1), though no member name the schema *defines* comes
+  close.
+* JCS specifies ECMAScript number formatting for non-integers; MCF-1 has no
+  such case, because it rejects them.
+
+Where they differ, **MCF-1 as written here is normative**. Conformance
+vectors for the canonical form live in `spec/conformance/canonical/`;
+an implementation that passes the manifest and identifier vectors but not
+those is not conformant, because it cannot interoperate on signatures.
 
 ### 7.2 Signature block
 
