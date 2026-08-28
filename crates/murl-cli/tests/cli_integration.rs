@@ -48,7 +48,21 @@ impl TestEnv {
     fn stub_opener(&self) {
         let config = self.root.join("config");
         std::fs::create_dir_all(&config).unwrap();
-        std::fs::write(config.join("handlers.json"), r#"{"open": ["/bin/true"]}"#).unwrap();
+        // A no-op stub written here rather than a system binary: macOS has
+        // no /bin/true (it lives in /usr/bin), and a test that silently
+        // depends on one platform's layout fails for a reason that has
+        // nothing to do with what it is testing.
+        let stub = self.root.join("noop-opener");
+        std::fs::write(&stub, "#!/bin/sh\nexit 0\n").unwrap();
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o700)).unwrap();
+        }
+        let handlers = format!(
+            r#"{{"open": ["{}"]}}"#,
+            stub.to_string_lossy().replace('\\', "\\\\")
+        );
+        std::fs::write(config.join("handlers.json"), handlers).unwrap();
     }
 
     fn write(&self, rel: &str, content: &str) -> PathBuf {

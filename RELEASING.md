@@ -77,6 +77,23 @@ yanked but never reused. Publish only from a clean tagged checkout.
 * **Private vulnerability reporting** must be enabled once (Settings →
   Security) for the process in `SECURITY.md` to work.
 
+## The MSRV pin
+
+`Cargo.lock` pins `base64ct` to 1.6.0. It is a transitive dependency, and
+newer releases require a Rust newer than the 1.75 this workspace claims to
+support. Nothing here needs what the newer version adds.
+
+If the MSRV job starts failing after a dependency update, that is either the
+pin having been lost or another crate having raised its own floor. Two honest
+responses, in order of preference:
+
+1. pin the offending crate again (`cargo update -p <crate> --precise <ver>`);
+2. raise `rust-version` in the root `Cargo.toml` **and** the toolchain in the
+   MSRV CI job, in the same commit, and say so in the changelog.
+
+What is not acceptable is deleting the MSRV job. A claimed minimum nobody
+checks is a lie with a version number attached.
+
 ## Version numbering
 
 Pre-1.0, the crate version moves freely; the format version does not. Post

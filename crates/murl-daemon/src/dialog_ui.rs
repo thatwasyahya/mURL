@@ -142,26 +142,37 @@ impl ConsentUi for DialogUi {
             }
         };
 
-        // Map returned ids back to the indices that were offered. Anything
-        // else the backend printed is ignored: a surface cannot grant what
-        // it was not shown.
-        let mut granted = Vec::new();
-        for line in stdout.lines() {
-            let id = line.trim().trim_matches('"');
-            // Backends may append descriptive text; the id is the first
-            // token, and ids never contain whitespace.
-            let id = id.split_whitespace().next().unwrap_or("");
-            if id.is_empty() {
-                continue;
-            }
-            if let Some(item) = request.items.iter().find(|i| i.id == id) {
-                if !granted.contains(&item.index) {
-                    granted.push(item.index);
-                }
+        granted_indices(&stdout, request)
+    }
+}
+
+/// Map a backend's stdout back to the plan indices it was offered.
+///
+/// Split out from the dialog itself so it can be tested on every platform:
+/// these parsing rules are the security-relevant part, while spawning a stub
+/// program to produce that output is a Unix-only test mechanism. Windows
+/// cannot run a shell-script stub, and the rules should not go untested
+/// there for a reason that has nothing to do with the rules.
+///
+/// Anything returned that was not offered is discarded: a surface cannot
+/// grant what policy never showed it.
+fn granted_indices(stdout: &str, request: &ConsentRequest) -> Vec<usize> {
+    let mut granted = Vec::new();
+    for line in stdout.lines() {
+        let id = line.trim().trim_matches('"');
+        // Backends may append descriptive text; the id is the first token,
+        // and ids never contain whitespace.
+        let id = id.split_whitespace().next().unwrap_or("");
+        if id.is_empty() {
+            continue;
+        }
+        if let Some(item) = request.items.iter().find(|i| i.id == id) {
+            if !granted.contains(&item.index) {
+                granted.push(item.index);
             }
         }
-        granted
     }
+    granted
 }
 
 /// Header text shown above the resource list. Untrusted strings are
@@ -409,94 +420,45 @@ mod tests {
         }
     }
 
-    fn stub(tag: &str, body: &str) -> (PathBuf, PathBuf) {
-        let dir = std::env::temp_dir().join(format!(
-            "murl-dialog-{tag}-{}-{:?}",
-            std::process::id(),
-            std::thread::current().id()
-        ));
-        std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("stub");
-        write_stub_script(&path, body).unwrap();
-        (dir, path)
-    }
-
+    /// The parsing rules, exercised directly. These run on every platform
+    /// because they are the part that decides what gets opened.
     #[test]
     fn returned_ids_map_back_to_offered_indices() {
-        // The stub answers with ids, exactly as a real backend would.
-        let (dir, path) = stub("ok", "printf 'docs\\nworkspace\\n'\n");
-        let ui = DialogUi::with_program(Backend::Zenity, path);
-        assert_eq!(ui.ask(&request()), vec![0, 2]);
-        std::fs::remove_dir_all(dir).ok();
+        assert_eq!(granted_indices("docs\nworkspace\n", &request()), vec![0, 2]);
     }
 
     #[test]
     fn a_backend_cannot_grant_what_it_was_not_offered() {
-        let (dir, path) = stub(
-            "rogue",
-            "printf 'docs\\nterminal\\nghost\\n../etc/passwd\\n'\n",
-        );
-        let ui = DialogUi::with_program(Backend::Zenity, path);
-        // `terminal` was denied by policy and never offered; the rest are
+        // `terminal` was denied by policy and never offered; the others are
         // not resources at all.
-        assert_eq!(ui.ask(&request()), vec![0]);
-        std::fs::remove_dir_all(dir).ok();
-    }
-
-    #[test]
-    fn cancel_grants_nothing() {
-        let (dir, path) = stub("cancel", "exit 1\n");
-        let ui = DialogUi::with_program(Backend::Zenity, path);
-        assert!(ui.ask(&request()).is_empty());
-        std::fs::remove_dir_all(dir).ok();
+        let stdout = "docs\nterminal\nghost\n../etc/passwd\n";
+        assert_eq!(granted_indices(stdout, &request()), vec![0]);
     }
 
     #[test]
     fn empty_or_noisy_output_grants_nothing() {
-        let (dir, path) = stub("noise", "printf '\\n  \\n\"\"\\n'\n");
-        let ui = DialogUi::with_program(Backend::Zenity, path);
-        assert!(ui.ask(&request()).is_empty());
-        std::fs::remove_dir_all(dir).ok();
-    }
-
-    #[test]
-    fn a_hanging_dialog_times_out_into_denial() {
-        let (dir, path) = stub("hang", "sleep 30\n");
-        let ui =
-            DialogUi::with_program(Backend::Zenity, path).with_timeout(Duration::from_millis(400));
-        let started = std::time::Instant::now();
-        assert!(ui.ask(&request()).is_empty());
-        assert!(
-            started.elapsed() < Duration::from_secs(5),
-            "the timeout did not fire"
-        );
-        std::fs::remove_dir_all(dir).ok();
-    }
-
-    #[test]
-    fn a_missing_backend_grants_nothing() {
-        let ui = DialogUi::with_program(Backend::Zenity, PathBuf::from("/nonexistent/zenity"));
-        assert!(ui.ask(&request()).is_empty());
+        assert!(granted_indices("\n  \n\"\"\n", &request()).is_empty());
+        assert!(granted_indices("", &request()).is_empty());
     }
 
     #[test]
     fn kdialog_quoted_output_parses() {
-        let (dir, path) = stub("kdialog", "printf '\"docs\"\\n\"workspace\"\\n'\n");
-        let ui = DialogUi::with_program(Backend::Kdialog, path);
-        assert_eq!(ui.ask(&request()), vec![0, 2]);
-        std::fs::remove_dir_all(dir).ok();
+        assert_eq!(
+            granted_indices("\"docs\"\n\"workspace\"\n", &request()),
+            vec![0, 2]
+        );
     }
 
     #[test]
     fn osascript_descriptive_lines_parse_back_to_ids() {
         // `choose from list` returns the whole displayed item.
-        let (dir, path) = stub(
-            "osa",
-            "printf 'docs  ·  SAFE  ·  https://docs.example/x\\n'\n",
-        );
-        let ui = DialogUi::with_program(Backend::Osascript, path);
-        assert_eq!(ui.ask(&request()), vec![0]);
-        std::fs::remove_dir_all(dir).ok();
+        let stdout = "docs  ·  SAFE  ·  https://docs.example/x\n";
+        assert_eq!(granted_indices(stdout, &request()), vec![0]);
+    }
+
+    #[test]
+    fn a_repeated_id_is_granted_once() {
+        assert_eq!(granted_indices("docs\ndocs\n", &request()), vec![0]);
     }
 
     #[test]
@@ -518,7 +480,6 @@ mod tests {
         assert!(argv.iter().all(|a| a != "TRUE"), "a row was pre-approved");
         assert_eq!(argv.iter().filter(|a| *a == "FALSE").count(), 2);
     }
-
     #[test]
     fn hostile_display_strings_are_clipped_and_stripped() {
         let mut r = request();

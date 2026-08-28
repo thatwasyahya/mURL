@@ -244,9 +244,17 @@ fn open_url_ignores_injected_approval_flags() {
     env.write("m.murl.json", &manifest(Some("murl://local/p"), "P"));
     env.run(&["name", "add", "p", "m.murl.json"]);
     // Point dispatch at a no-op in case anything does launch.
+    // Written rather than borrowed from the system: macOS has no /bin/true.
+    let stub = env.root.join("noop-opener");
+    std::fs::write(&stub, "#!/bin/sh\nexit 0\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o700)).unwrap();
+    }
     std::fs::write(
         env.root.join("config/handlers.json"),
-        br#"{"open":["/bin/true"]}"#,
+        format!(r#"{{"open":["{}"]}}"#, stub.to_string_lossy()),
     )
     .unwrap();
 

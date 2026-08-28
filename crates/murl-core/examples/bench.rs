@@ -41,10 +41,7 @@ fn bench<F: FnMut()>(name: &str, iterations: u32, mut f: F) {
     } else {
         (per * 1e3, "ms")
     };
-    println!(
-        "{name:<44} {value:>9.2} {unit}   {:>12.0} ops/s",
-        1.0 / per
-    );
+    println!("{name:<44} {value:>9.2} {unit}   {:>12.0} ops/s", 1.0 / per);
 }
 
 /// A manifest with `n` resources, as an author would plausibly write it.
@@ -93,9 +90,13 @@ fn main() {
             black_box(Manifest::from_slice(black_box(bytes), &limits).unwrap());
         });
         let manifest = Manifest::from_slice(bytes, &limits).unwrap();
-        bench(&format!("validate manifest ({n} resources)"), 20_000, || {
-            black_box(manifest.validate());
-        });
+        bench(
+            &format!("validate manifest ({n} resources)"),
+            20_000,
+            || {
+                black_box(manifest.validate());
+            },
+        );
         bench(
             &format!("canonicalize (MCF-1, {n} resources)"),
             20_000,
@@ -122,7 +123,8 @@ fn main() {
     sign_manifest(&mut signed, &keypair).unwrap();
     bench("sign manifest (ed25519, 16 resources)", 2_000, || {
         let mut copy = signed.clone();
-        black_box(sign_manifest(&mut copy, &keypair).unwrap());
+        sign_manifest(&mut copy, &keypair).unwrap();
+        black_box(&copy);
     });
     bench("verify signature (ed25519)", 2_000, || {
         black_box(verify_manifest(black_box(&signed)).unwrap());
