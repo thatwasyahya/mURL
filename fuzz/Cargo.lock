@@ -471,7 +471,7 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "murl-core"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "base64",
  "ed25519-dalek",
@@ -484,7 +484,7 @@ dependencies = [
 
 [[package]]
 name = "murl-daemon"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "clap",
  "murl-core",
@@ -505,7 +505,7 @@ dependencies = [
 
 [[package]]
 name = "murl-net"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "murl-core",
  "ureq",
