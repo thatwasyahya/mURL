@@ -132,6 +132,40 @@ stale-forever behavior.
 miss; identity recorded in metadata and checked; TTL for `@latest`; stale
 use is loud (warning) and only as fallback.
 
+### T-17 · Argument injection through the OS handler ✅
+
+The activated URL is attacker-chosen. On Windows, ShellExecute substitutes
+it into a registered command *template* and `CommandLineToArgvW` parses the
+result afterwards, so a URL containing a quote can append arguments —
+`murl://local/x" --allow-dangerous` would arrive as four argv elements, and
+approval flags skip the prompt entirely.
+
+**Defenses**: every platform registers `murl open-url`, an entry point that
+**ignores approval flags** whatever appears in argv, and takes exactly one
+positional (extras are a clap error, which fails closed). The worst a
+successful injection achieves is a consent prompt the user must still
+answer. Note the exposure was Windows-specific — Linux substitutes `%u` as
+one argv element after parsing the `Exec` line — but the mitigation is
+shared so there is one rule rather than three. Regression:
+`crates/murl-cli/tests/review_regressions.rs`.
+
+### T-18 · Configuration divergence between processes ✅
+
+Two processes that resolve the same mURL must apply the same policy. When
+the daemon carried built-in defaults instead of reading the user's
+`config.json`, a configured `"dangerous": "deny"` became a clickable prompt
+and configured handlers silently vanished — and because the default path
+routes through the daemon, that was the *normal* path, not an opt-in one.
+The same gap dropped `--offline`, which is a fail-**open**: the daemon
+fetched what the user had forbidden.
+
+**Defenses**: one loader (`murl_core::config`) used by both processes; the
+daemon reads policy, limits, and handlers at startup. Flags the wire
+protocol cannot carry (`--offline`, `--refresh`, `--skip`, the approval
+flags) make the CLI decline the daemon path rather than silently drop them,
+and `--daemon` turns that decline into an explicit error. Found by
+adversarial review, not by tests — which is why the regressions now exist.
+
 ### T-13 · Hostile handler registration 📋
 
 Tricking the user into registering a malicious handler, or malware editing

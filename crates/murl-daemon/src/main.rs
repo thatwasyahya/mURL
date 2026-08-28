@@ -12,14 +12,12 @@ use std::sync::atomic::AtomicU64;
 use clap::{Parser, Subcommand};
 
 use murl_core::cache::ManifestCache;
-use murl_core::dispatch::OpenerConfig;
+use murl_core::config::{HandlersFile, UserConfig};
 use murl_core::error::Result;
 use murl_core::fetch::LocalStore;
-use murl_core::policy::Policy;
 use murl_core::resolver::Resolver;
 use murl_core::time::{Clock, SystemClock};
 use murl_core::trust::TrustStore;
-use murl_core::Limits;
 
 use murl_daemon::client;
 use murl_daemon::protocol::{Request, Response, PROTOCOL_VERSION};
@@ -139,9 +137,16 @@ fn serve(path: &std::path::Path) -> Result<i32> {
     let store = LocalStore::new(dirs.names_dir());
     let cache = ManifestCache::new(dirs.manifest_cache_dir());
     let trust = TrustStore::load(dirs.trust_file())?;
-    let limits = Limits::default();
+    // The user's policy, limits, and handlers — read through the same
+    // loader the CLI uses. Carrying defaults here instead would mean a
+    // configured `"dangerous": "deny"` became a clickable prompt and
+    // configured handlers vanished, with both halves looking correct.
+    let config = UserConfig::load(&dirs.config_file())?;
+    let limits = config.limits();
+    let policy = config.policy();
+    let handlers = HandlersFile::load(&dirs.handlers_file())?;
+    let opener = handlers.to_opener(std::env::consts::OS, dirs.home.clone());
     let clock = SystemClock;
-    let opener = OpenerConfig::platform_default(std::env::consts::OS, dirs.home.clone());
     let launcher = launcher::RealLauncher;
     let consent = TerminalUi;
     let fetcher = murl_net::HttpsFetcher::with_trace(|message| {
@@ -163,7 +168,7 @@ fn serve(path: &std::path::Path) -> Result<i32> {
 
     let ctx = Context {
         with_resolver: &with_resolver,
-        policy: Policy::default(),
+        policy,
         opener,
         launcher: &launcher,
         consent: &consent,

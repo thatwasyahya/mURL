@@ -1,10 +1,7 @@
 //! Application context: directories, configuration, and resolver wiring.
 
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::path::PathBuf;
-
-use serde::{Deserialize, Serialize};
 
 use murl_core::cache::ManifestCache;
 use murl_core::dispatch::OpenerConfig;
@@ -22,46 +19,16 @@ use crate::logger;
 use crate::paths::{home_dir, AppPaths};
 use murl_net::HttpsFetcher;
 
-/// Optional user configuration, `<config>/config.json`.
-#[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-struct ConfigFile {
-    limits: Option<Limits>,
-    policy: Option<Policy>,
-}
-
-/// Handler configuration, `<config>/handlers.json`, managed by
-/// `murl handler ...`.
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-pub struct HandlersFile {
-    /// Override the platform opener (advanced; normally unset).
-    pub open: Option<Vec<String>>,
-    /// Terminal handler argv; `{target}` is the working directory.
-    pub terminal: Option<Vec<String>>,
-    /// ssh handler argv; `{target}` is the full ssh:// URL.
-    pub ssh: Option<Vec<String>>,
-    /// remote-desktop handler argv; `{target}` is the rdp:// or vnc:// URL.
-    pub remote_desktop: Option<Vec<String>>,
-    /// Handlers for `custom:<name>` kinds.
-    pub custom: BTreeMap<String, Vec<String>>,
-}
+// Configuration types live in murl-core so the CLI and the daemon read
+// them through one loader (see murl_core::config).
+pub use murl_core::config::HandlersFile;
 
 pub fn load_handlers(path: &std::path::Path) -> Result<HandlersFile> {
-    match std::fs::read(path) {
-        Ok(bytes) => serde_json::from_slice(&bytes)
-            .map_err(|e| Error::Manifest(format!("malformed {}: {e}", path.display()))),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(HandlersFile::default()),
-        Err(e) => Err(e.into()),
-    }
+    HandlersFile::load(path)
 }
 
 pub fn save_handlers(path: &std::path::Path, handlers: &HandlersFile) -> Result<()> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::fs::write(path, serde_json::to_string_pretty(handlers)?)?;
-    Ok(())
+    handlers.save(path)
 }
 
 /// A target argument: an mURL or a manifest file path.
@@ -98,25 +65,12 @@ impl App {
     pub fn init(json: bool, offline: bool, refresh: bool) -> Result<App> {
         let paths = AppPaths::discover()?;
 
-        let config: ConfigFile = match std::fs::read(paths.config_file()) {
-            Ok(bytes) => serde_json::from_slice(&bytes).map_err(|e| {
-                Error::Manifest(format!("malformed {}: {e}", paths.config_file().display()))
-            })?,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => ConfigFile::default(),
-            Err(e) => return Err(e.into()),
-        };
-        let limits = config.limits.unwrap_or_default();
-        let policy = config.policy.unwrap_or_default();
+        let config = murl_core::config::UserConfig::load(&paths.config_file())?;
+        let limits = config.limits();
+        let policy = config.policy();
 
-        let handlers = load_handlers(&paths.handlers_file())?;
-        let mut opener = OpenerConfig::platform_default(std::env::consts::OS, home_dir());
-        if let Some(open) = handlers.open {
-            opener.open_argv = open;
-        }
-        opener.terminal_argv = handlers.terminal;
-        opener.ssh_argv = handlers.ssh;
-        opener.remote_desktop_argv = handlers.remote_desktop;
-        opener.custom = handlers.custom;
+        let handlers = HandlersFile::load(&paths.handlers_file())?;
+        let opener = handlers.to_opener(std::env::consts::OS, home_dir());
 
         let store = LocalStore::new(paths.names_dir());
         let cache = ManifestCache::new(paths.manifest_cache_dir());

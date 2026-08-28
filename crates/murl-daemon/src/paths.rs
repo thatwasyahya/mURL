@@ -58,6 +58,14 @@ impl DaemonPaths {
         self.config_dir.join("trust.json")
     }
 
+    pub fn config_file(&self) -> PathBuf {
+        self.config_dir.join("config.json")
+    }
+
+    pub fn handlers_file(&self) -> PathBuf {
+        self.config_dir.join("handlers.json")
+    }
+
     pub fn manifest_cache_dir(&self) -> PathBuf {
         self.cache_dir.join("manifests")
     }

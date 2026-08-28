@@ -94,9 +94,27 @@ non-zero rather than pretending it registered something — the bundle script
 is the supported path. Dispatch itself has always worked on macOS via
 `open` (`OpenerConfig::platform_default("macos")`).
 
-Not yet done: notarized/stapled release artifacts, which need an Apple
-developer identity (roadmap v0.4). Until then, Gatekeeper will warn on a
-downloaded bundle; building locally avoids that entirely.
+**Known limitation — macOS activation currently denies everything.** A
+Launch Services activation runs the bundle's executable with no controlling
+terminal, and consent without a way to ask is a refusal (that is the
+fail-closed rule, working as designed). Linux sidesteps this with
+`Terminal=true` and Windows with a console window; macOS bundles have no
+equivalent, so `open 'murl://local/x'` resolves, prints the plan, and exits
+`4` (DENIED) rather than opening anything.
+
+That makes macOS registration a **preview**: correct and safe, but not yet
+useful for anything that needs consent. Two ways out, both on the roadmap
+and neither faked here — the native consent dialog (v0.3's remaining work,
+which is exactly what the `ConsentUi` abstraction exists for), or a policy
+of `"safe": "allow"` for users who accept that trade for SAFE resources.
+Wrapping the launcher in a Terminal.app invocation was considered and
+rejected: it means writing the activated URL into a script for another
+program to re-interpret, which is precisely the shell-shaped surface this
+project refuses to have.
+
+Not yet done either: notarized/stapled release artifacts, which need an
+Apple developer identity (roadmap v0.4). Until then, Gatekeeper will warn on
+a downloaded bundle; building locally avoids that entirely.
 
 ## Security notes common to all platforms
 
@@ -105,6 +123,17 @@ downloaded bundle; building locally avoids that entirely.
 * The handler command is the resolver, not a browser or shell — every
   activation goes through the full parse/validate/policy pipeline; there is
   no "fast path" for OS-delivered input.
+* **Every platform registers `murl open-url`, not `murl open`.** The two
+  differ in one way that matters: `open-url` ignores approval flags even if
+  they appear in argv. This is a defense against how Windows delivers the
+  URL — ShellExecute substitutes it into a command *template* string, and
+  `CommandLineToArgvW` parses afterwards, so a link containing a quote can
+  append arguments (`murl://local/x" --allow-dangerous`). With approval
+  flags inert on the handler path, the most such an injection achieves is a
+  prompt the user still has to answer. Linux (`%u` substituted as one argv
+  element after the `Exec` line is parsed) and macOS were never exposed the
+  same way, but they use the same entry point so there is one rule to
+  reason about rather than three.
 * An attacker-supplied *identifier* is the expected case, not a special
   one: the parser's job description is hostile input (threat model T-1).
 * `murl os install` uses the current executable's absolute path; moving the

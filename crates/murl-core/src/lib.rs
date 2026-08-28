@@ -33,6 +33,7 @@
 pub mod bundle;
 pub mod cache;
 pub mod canonical;
+pub mod config;
 pub mod dispatch;
 pub mod error;
 pub mod fetch;
@@ -49,6 +50,7 @@ pub mod time;
 pub mod trust;
 
 pub use bundle::{Bundle, BundleEntry};
+pub use config::{HandlersFile, UserConfig};
 pub use error::{Error, Result};
 pub use kind::Kind;
 pub use limits::Limits;

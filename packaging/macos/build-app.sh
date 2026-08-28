@@ -58,7 +58,7 @@ cat > "$APP/Contents/MacOS/mURL" <<'LAUNCHER'
 # Launch Services hands the activated URL as "$1". Pass it to `murl open`
 # unchanged: the parser re-validates it from scratch, so nothing here needs
 # to interpret, quote, or sanitize it.
-exec "$(dirname "$0")/murl" open "$@"
+exec "$(dirname "$0")/murl" open-url "$@"
 LAUNCHER
 chmod +x "$APP/Contents/MacOS/mURL" "$APP/Contents/MacOS/murl"
 

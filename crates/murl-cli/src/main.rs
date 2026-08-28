@@ -141,6 +141,20 @@ enum Command {
         #[arg(long)]
         skip: Vec<String>,
     },
+    /// Open an mURL delivered by the OS scheme handler.
+    ///
+    /// This is what `murl os install` registers, and it differs from `open`
+    /// in one way that matters: approval flags are ignored here even if they
+    /// appear in argv. An OS handler is invoked with a string an attacker
+    /// chose, and on Windows that string is substituted into a command
+    /// *template* before argv is parsed, so a URL containing a quote can
+    /// append arguments. Dropping approval flags on this path means the most
+    /// such an injection can achieve is a prompt the user must still answer.
+    #[command(hide = true)]
+    OpenUrl {
+        /// The activated mURL
+        murl: String,
+    },
     /// Manage the local name store (murl://local/...)
     #[command(subcommand)]
     Name(NameCmd),
@@ -324,26 +338,35 @@ fn run(cli: &Cli) -> murl_core::Result<i32> {
             // The daemon is an optimization of the consent surface, never a
             // dependency: try it, fall back silently, unless the user pinned
             // the choice with --daemon / --no-daemon.
+            let opts = commands::open::OpenOptions {
+                dry_run: *dry_run,
+                yes: *yes,
+                allow_sensitive: *allow_sensitive,
+                allow_dangerous: *allow_dangerous,
+                only: only.clone(),
+                skip: skip.clone(),
+            };
             let mode = daemon_client::Mode::from_flags(cli.daemon, cli.no_daemon);
             if !*dry_run {
                 if let daemon_client::Outcome::Handled(code) =
-                    daemon_client::try_open(&app, target, only, mode)?
+                    daemon_client::try_open(&app, target, only, &opts, mode)?
                 {
                     return Ok(code);
                 }
             }
-            commands::open::run(
-                &app,
-                target,
-                commands::open::OpenOptions {
-                    dry_run: *dry_run,
-                    yes: *yes,
-                    allow_sensitive: *allow_sensitive,
-                    allow_dangerous: *allow_dangerous,
-                    only: only.clone(),
-                    skip: skip.clone(),
-                },
-            )
+            commands::open::run(&app, target, opts)
+        }
+        Command::OpenUrl { murl } => {
+            // Consent only, never flag-driven approval, whatever else
+            // landed in argv.
+            let opts = commands::open::OpenOptions::default();
+            let mode = daemon_client::Mode::from_flags(cli.daemon, cli.no_daemon);
+            if let daemon_client::Outcome::Handled(code) =
+                daemon_client::try_open(&app, murl, &[], &opts, mode)?
+            {
+                return Ok(code);
+            }
+            commands::open::run(&app, murl, opts)
         }
         Command::Name(sub) => match sub {
             NameCmd::Add { name, file } => commands::name::add(&app, name, file),

@@ -1,10 +1,12 @@
 //! `murl export` / `murl import` — move a destination between machines.
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use murl_core::bundle::Bundle;
 use murl_core::error::{Error, Result};
-use murl_core::murl::Murl;
+use murl_core::manifest::Manifest;
+use murl_core::murl::{Authority, Murl};
 use serde_json::json;
 
 use crate::ctx::App;
@@ -75,26 +77,81 @@ pub fn import(app: &App, file: &str, as_name: Option<&str>, force: bool) -> Resu
     // Decide the local name for each entry before touching the store, so a
     // rejected entry aborts the whole import.
     let mut plan: Vec<(Murl, Vec<u8>)> = Vec::with_capacity(bundle.entries.len());
+    let mut claimed: BTreeMap<String, String> = BTreeMap::new();
     for (i, entry) in bundle.entries.iter().enumerate() {
-        let is_root = bundle.root.is_some() && entry.identity == bundle.root;
+        // A bundle exported from a bare manifest file has no identities at
+        // all (nothing named it), so its first entry is the root by
+        // construction — that is the case `--as` exists to serve.
+        let is_root = match &bundle.root {
+            Some(root) => entry.identity.as_deref() == Some(root.as_str()),
+            None => i == 0,
+        };
         let local = match (is_root, as_name) {
             (true, Some(name)) => local_name(name)?,
             _ => match &entry.identity {
+                // Re-home under local/ keeping the name path, but build the
+                // mURL *structurally*. Re-parsing the decoded text would
+                // let an escaped byte become grammar again: an identity of
+                // `murl://vendor.example/tool%401` decodes to the single
+                // segment `tool@1`, which re-parsed means name `tool` at
+                // version 1 — a different, unrelated store slot.
                 Some(identity) => {
                     let parsed = Murl::parse(identity)?;
-                    // Remote identities are re-homed under local/, keeping
-                    // their name path so composition still resolves.
-                    local_name(&parsed.name_path())?
+                    Murl {
+                        authority: Authority::Local,
+                        name: parsed.name.clone(),
+                        version: parsed.version.clone(),
+                        selector: None,
+                        query: None,
+                    }
                 }
                 None => {
                     return Err(Error::Validation(format!(
-                        "bundle entry {i} (`{}`) has no identity; re-export it under a name, or import with --as",
-                        entry.name
+                        "bundle entry {i} (`{}`) has no identity; re-export it under a name{}",
+                        entry.name,
+                        if is_root { ", or import with --as" } else { "" }
                     )))
                 }
             },
         };
-        plan.push((local, entry.decode(&app.limits)?));
+
+        // Identity binding, exactly as `murl name add` enforces it: a
+        // manifest that declares an id the resolver would refuse must not
+        // be written at all. Installing it "successfully" would leave a
+        // store entry no lookup can ever read.
+        let bytes = entry.decode(&app.limits)?;
+        let manifest = Manifest::from_slice(&bytes, &app.limits)?;
+        if let Some(declared) = &manifest.doc.id {
+            let declared = Murl::parse(declared)?;
+            let matches = declared.authority == local.authority && declared.name == local.name;
+            if !matches {
+                return Err(Error::Validation(format!(
+                    "bundle entry `{}` declares id `{}`, which cannot resolve as `{}`. \
+                     Re-export it from a local name, or ask the publisher for a manifest \
+                     whose id matches where you can install it.",
+                    entry.name,
+                    declared.identity(),
+                    local.identity()
+                )));
+            }
+        }
+
+        // Two entries that re-home onto the same local name would silently
+        // overwrite each other, and the survivor would be whichever the
+        // bundle author listed last.
+        if let Some(previous) = claimed.insert(
+            local.identity(),
+            entry.identity.clone().unwrap_or_else(|| entry.name.clone()),
+        ) {
+            return Err(Error::Validation(format!(
+                "bundle entries `{previous}` and `{}` both install as `{}`; \
+                 refusing an import where one would silently overwrite the other",
+                entry.identity.clone().unwrap_or_else(|| entry.name.clone()),
+                local.identity()
+            )));
+        }
+
+        plan.push((local, bytes));
     }
 
     if !force {

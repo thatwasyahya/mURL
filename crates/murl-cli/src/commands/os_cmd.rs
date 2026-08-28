@@ -83,7 +83,7 @@ fn linux_install(_app: &App) -> Result<i32> {
          Type=Application\n\
          Name=mURL Resolver\n\
          Comment=Resolve and open mURL multi-resource identifiers\n\
-         Exec=\"{exe_str}\" open %u\n\
+         Exec=\"{exe_str}\" open-url %u\n\
          Terminal=true\n\
          NoDisplay=true\n\
          MimeType=x-scheme-handler/murl;\n"
@@ -159,7 +159,7 @@ fn linux_status() -> Result<i32> {
 fn windows_install() -> Result<i32> {
     let exe = std::env::current_exe()?;
     let exe_str = exe.to_string_lossy().into_owned();
-    let command = format!("\"{exe_str}\" open \"%1\"");
+    let command = format!("\"{exe_str}\" open-url \"%1\"");
     run_quiet(
         "reg.exe",
         &[

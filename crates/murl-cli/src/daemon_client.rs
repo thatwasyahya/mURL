@@ -46,7 +46,13 @@ pub enum Outcome {
     FallBack,
 }
 
-pub fn try_open(app: &App, target: &str, only: &[String], mode: Mode) -> Result<Outcome> {
+pub fn try_open(
+    app: &App,
+    target: &str,
+    only: &[String],
+    opts: &crate::commands::open::OpenOptions,
+    mode: Mode,
+) -> Result<Outcome> {
     if mode == Mode::Never {
         return Ok(Outcome::FallBack);
     }
@@ -54,6 +60,17 @@ pub fn try_open(app: &App, target: &str, only: &[String], mode: Mode) -> Result<
     // only speaks mURLs.
     if !(target.len() >= 5 && target[..5].eq_ignore_ascii_case("murl:")) {
         return refuse_or_fall_back(mode, "target is a file path, not an mURL");
+    }
+    // The protocol carries a name and a narrowing `only` list — nothing
+    // else. Any other flag the user set would be silently dropped, and
+    // `--offline` dropped is a fail-*open*: the daemon would fetch what the
+    // user forbade. So the presence of an inexpressible flag means the
+    // daemon is not the right path for this invocation.
+    if let Some(flag) = inexpressible_flag(app, opts) {
+        return refuse_or_fall_back(
+            mode,
+            &format!("{flag} cannot be expressed in the daemon protocol"),
+        );
     }
 
     let path = socket::socket_path()?;
@@ -113,6 +130,35 @@ pub fn try_open(app: &App, target: &str, only: &[String], mode: Mode) -> Result<
         }
     }
     Ok(Outcome::Handled(exit))
+}
+
+/// Which set flag, if any, the `activate` request cannot carry.
+fn inexpressible_flag(
+    app: &App,
+    opts: &crate::commands::open::OpenOptions,
+) -> Option<&'static str> {
+    if app.offline {
+        return Some("--offline");
+    }
+    if app.refresh {
+        return Some("--refresh");
+    }
+    if !opts.skip.is_empty() {
+        return Some("--skip");
+    }
+    // Approval flags belong to the caller's terminal session; the daemon
+    // asks with its own surface, so honoring them here would mean two
+    // different consent stories for one command.
+    if opts.yes {
+        return Some("--yes");
+    }
+    if opts.allow_sensitive {
+        return Some("--allow-sensitive");
+    }
+    if opts.allow_dangerous {
+        return Some("--allow-dangerous");
+    }
+    None
 }
 
 fn refuse_or_fall_back(mode: Mode, why: &str) -> Result<Outcome> {
