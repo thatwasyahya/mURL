@@ -77,22 +77,30 @@ yanked but never reused. Publish only from a clean tagged checkout.
 * **Private vulnerability reporting** must be enabled once (Settings →
   Security) for the process in `SECURITY.md` to work.
 
-## The MSRV pin
+## The MSRV
 
-`Cargo.lock` pins `base64ct` to 1.6.0. It is a transitive dependency, and
-newer releases require a Rust newer than the 1.75 this workspace claims to
-support. Nothing here needs what the newer version adds.
+`rust-version` is **1.88**, and that number was measured rather than chosen:
+1.88 builds the workspace, 1.85 does not.
 
-If the MSRV job starts failing after a dependency update, that is either the
-pin having been lost or another crate having raised its own floor. Two honest
-responses, in order of preference:
+The floor comes entirely from one dependency chain —
+`ureq -> url -> idna -> icu_*`, where the `icu` crates require 1.88. Nothing
+mURL writes needs anything that recent, and `murl-core` itself (the crate an
+embedder or a second implementation would depend on) pulls none of it.
 
-1. pin the offending crate again (`cargo update -p <crate> --precise <ver>`);
-2. raise `rust-version` in the root `Cargo.toml` **and** the toolchain in the
-   MSRV CI job, in the same commit, and say so in the changelog.
+Two ways to lower it, neither taken:
 
-What is not acceptable is deleting the MSRV job. A claimed minimum nobody
-checks is a lie with a version number attached.
+* pin `url` back to 2.5.0, which used `idna` 0.5 and no `icu` at all. That
+  trades currency in a URL-parsing dependency for a lower MSRV — a bad trade
+  in a tool whose job is handling hostile identifiers.
+* drop `ureq`. A worthwhile question for later, not a release-day change.
+
+`Cargo.lock` also pins `base64ct` to 1.6.0 for the same class of reason.
+
+If the MSRV job fails after a dependency update, the honest responses are to
+pin the offending crate, or to raise `rust-version` **and** the CI toolchain
+in the same commit and say so in the changelog. What is not acceptable is
+deleting the job: a claimed minimum nobody checks is a lie with a version
+number attached.
 
 ## Version numbering
 

@@ -244,19 +244,24 @@ fn open_url_ignores_injected_approval_flags() {
     env.write("m.murl.json", &manifest(Some("murl://local/p"), "P"));
     env.run(&["name", "add", "p", "m.murl.json"]);
     // Point dispatch at a no-op in case anything does launch.
-    // Written rather than borrowed from the system: macOS has no /bin/true.
-    let stub = env.root.join("noop-opener");
-    std::fs::write(&stub, "#!/bin/sh\nexit 0\n").unwrap();
+    // A no-op opener, in case anything does reach dispatch. Unix-only: the
+    // stub is a shell script, and on Windows the platform default is fine
+    // because this test never gets past consent anyway.
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
+        let stub = env.root.join("noop-opener");
+        std::fs::write(&stub, "#!/bin/sh\nexit 0\n").unwrap();
         std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o700)).unwrap();
+        // Built with serde_json, never by formatting a string: a Windows
+        // path carries backslashes, and those are JSON escapes.
+        let handlers = serde_json::json!({ "open": [stub.to_string_lossy()] });
+        std::fs::write(
+            env.root.join("config/handlers.json"),
+            serde_json::to_vec(&handlers).unwrap(),
+        )
+        .unwrap();
     }
-    std::fs::write(
-        env.root.join("config/handlers.json"),
-        format!(r#"{{"open":["{}"]}}"#, stub.to_string_lossy()),
-    )
-    .unwrap();
 
     // Exactly what an injected argv would look like after the OS split it.
     let o = env.run(&["open-url", "murl://local/p", "--allow-dangerous", "--yes"]);

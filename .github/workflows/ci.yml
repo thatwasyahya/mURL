@@ -71,13 +71,13 @@ jobs:
         run: python3 spec/check-schema.py
 
   msrv:
-    name: minimum supported rust (1.75)
+    name: minimum supported rust (1.88)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.75"
+          toolchain: "1.88"
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --workspace
 

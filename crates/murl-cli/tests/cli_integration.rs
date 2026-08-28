@@ -58,11 +58,14 @@ impl TestEnv {
             use std::os::unix::fs::PermissionsExt;
             std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o700)).unwrap();
         }
-        let handlers = format!(
-            r#"{{"open": ["{}"]}}"#,
-            stub.to_string_lossy().replace('\\', "\\\\")
-        );
-        std::fs::write(config.join("handlers.json"), handlers).unwrap();
+        // Built with serde_json rather than formatted: hand-escaping a path
+        // into JSON is exactly the kind of thing that works on one platform.
+        let handlers = serde_json::json!({ "open": [stub.to_string_lossy()] });
+        std::fs::write(
+            config.join("handlers.json"),
+            serde_json::to_vec(&handlers).unwrap(),
+        )
+        .unwrap();
     }
 
     fn write(&self, rel: &str, content: &str) -> PathBuf {
