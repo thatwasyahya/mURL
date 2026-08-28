@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security model — mURL</title>
+<meta name="description" content="mURL's security model: three risk tiers, consent on the resolved plan, trust by local pinning, the hardening resolution and dispatch apply — and what none of it defends against.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="index.html">murl://</a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="spec.html">Specification</a>
+      <a href="security.html" aria-current="page">Security</a>
+      <a href="https://github.com/thatwasyahya/mURL">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+
+  <h1>The security model</h1>
+
+  <p class="lede">
+    An identifier that can make an operating system open many things is an
+    attack primitive by default. This model exists to make it a useful
+    primitive instead.
+  </p>
+
+  <p>
+    This page is a summary. The
+    <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/security.md">security model document</a>
+    states the model in full, and the
+    <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/threat-model.md">threat model</a>
+    enumerates the attacks it answers, one by one, with an honest status on each
+    — mitigated, partial, or planned.
+  </p>
+
+  <h2>Five principles</h2>
+
+  <ol>
+    <li><strong>Manifests propose; local policy disposes.</strong> A manifest
+      describes what a destination is made of. It carries no permissions, cannot
+      request permissions, and cannot configure handlers. Everything privileged
+      — policy, trust pins, handler registrations, limits — lives in local,
+      user-owned configuration that no manifest content can reach.</li>
+    <li><strong>Consent before dispatch, on the real plan.</strong> You are
+      shown the fully resolved plan — every resource after splicing, its tier,
+      the manifest's origin and trust status — before anything opens. Consent to
+      a <em>name</em> is meaningless; consent is to the <em>set</em>.</li>
+    <li><strong>No shell, anywhere.</strong> Every launch is an argv array
+      passed to the process API, with target substitution confined to a single
+      argv element. There is no code path in which a target string reaches
+      <code>sh -c</code>, <code>cmd /c</code>, or any other shell.</li>
+    <li><strong>Fail closed.</strong> A non-interactive invocation with no
+      explicit allow flags dispatches nothing that needed consent. A hostile
+      document that triggers the scheme handler in some headless context gets a
+      refusal, not a best effort.</li>
+    <li><strong>Hostile input stays behind small, fuzzed parsers.</strong> The
+      mURL parser, the manifest validator, and the canonicalizer are total
+      functions with hard input caps, fuzzed continuously.</li>
+  </ol>
+
+  <h2>Three tiers</h2>
+
+  <p>
+    Classification derives from what a resource <em>is</em> — kind plus target —
+    never from what a manifest says about itself.
+  </p>
+
+  <div class="cards three">
+    <div class="card tier tier-safe">
+      <span class="tier-name">SAFE</span>
+      <h3><code>https</code></h3>
+      <p>Rendered by a sandboxed browser; worst case is roughly a tab.</p>
+    </div>
+    <div class="card tier tier-sensitive">
+      <span class="tier-name">SENSITIVE</span>
+      <h3><code>file</code>, <code>dir</code></h3>
+      <p>Non-executable local paths. Exposes or touches local data.</p>
+    </div>
+    <div class="card tier tier-dangerous">
+      <span class="tier-name">DANGEROUS</span>
+      <h3><code>terminal</code>, <code>custom:*</code>, executable-adjacent files</h3>
+      <p><code>.exe</code>, <code>.bat</code>, <code>.ps1</code>, <code>.sh</code>,
+      <code>.desktop</code>, <code>.lnk</code>, <code>.jar</code>, <code>.hta</code>
+      and friends. Opening it is, or is one dialog from, code execution.</p>
+    </div>
+  </div>
+
+  <p>
+    The executable-extension escalation closes a classic laundering trick — "it
+    is just a <code>file</code>", where the file is a <code>.desktop</code> entry
+    and the desktop's opener would <em>execute</em> it. Classification looks at
+    the target, not the label.
+  </p>
+
+  <h2>What each tier requires</h2>
+
+  <p>
+    These are defaults. All of them are overridable in local
+    <code>config.json</code> — and by nothing else.
+  </p>
+
+  <div class="table-scroll">
+  <table>
+    <thead>
+      <tr><th>Situation</th><th>Default outcome</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>SAFE resource</td><td>prompt (one consolidated consent step)</td></tr>
+      <tr><td>SENSITIVE resource</td><td>prompt</td></tr>
+      <tr><td>DANGEROUS resource, manifest trusted</td><td>prompt</td></tr>
+      <tr><td>DANGEROUS resource, manifest untrusted</td><td><strong>deny — not promptable</strong></td></tr>
+      <tr><td>Remote manifest referencing local filesystem</td><td>extra consent reason, or deny by policy</td></tr>
+      <tr><td>Expired or not-yet-valid manifest</td><td>SAFE prompts with a warning; everything else denied</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>
+    The untrusted-DANGEROUS rule is the keystone. Users can be talked into one
+    click, and one click is exactly what a hostile mURL gets. Making terminals
+    from unknown senders un-clickable rather than merely scary removes the
+    social-engineering path entirely; an attacker's remaining routes are getting
+    the user to run <code>murl trust add</code> or <code>murl name add</code>,
+    both deliberate, documented acts.
+  </p>
+
+  <p>
+    Consent flags for scripts are tier-scoped — <code>--yes</code> covers SAFE
+    only, with separate <code>--allow-sensitive</code> and
+    <code>--allow-dangerous</code> — so automation has to state exactly how much
+    risk it is accepting.
+  </p>
+
+  <h2>Trust</h2>
+
+  <p>
+    "Trusted" has one meaning here: the manifest is installed locally, or it
+    carries a valid ed25519 signature from a key you pinned for that authority.
+    There is no certificate authority and no web of trust — see
+    <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/trust-model.md">the trust model</a>
+    for why not.
+  </p>
+
+  <ul>
+    <li><strong>Signatures</strong> cover a canonical byte form (MCF-1), so a
+      manifest that is reformatted but not altered still verifies.</li>
+    <li><strong>Identity binding</strong>: a manifest declaring an
+      <code>id</code> is refused when served under a different name, so a valid
+      signature cannot be replayed to relabel content.</li>
+    <li><strong>Integrity pins</strong>: a nested mURL can be pinned by
+      <code>sha256-…</code> over the raw bytes of the manifest it resolves to;
+      a mismatch is a hard stop.</li>
+    <li><strong>Pinned versions are immutable by contract</strong>, and
+      <code>@latest</code> is explicitly a mutable alias with a stated
+      rollback window.</li>
+  </ul>
+
+  <h2>Hardening around it</h2>
+
+  <div class="cards two">
+    <div class="card">
+      <h3>Resolution</h3>
+      <p>Userinfo is forbidden by the grammar, so
+        <code>murl://github.com@evil…</code> does not parse. Identifiers are
+        ASCII-only and IDN authorities must be punycoded. TLS is required
+        (loopback excepted), redirects are not followed, the size cap is
+        enforced while reading, and DNS results that resolve only to private,
+        link-local, loopback or CGNAT ranges are refused.</p>
+    </div>
+    <div class="card">
+      <h3>Limits as controls</h3>
+      <p>Depth ≤ 3, ≤ 8 manifests, ≤ 64 resources, ≤ 256 KiB per manifest,
+        cycle detection on the resolution path, duplicate-target suppression.
+        Every breach is a hard error, and none of them can be loosened by
+        manifest content.</p>
+    </div>
+    <div class="card">
+      <h3>Dispatch</h3>
+      <p>argv-only process creation; a target containing <code>; rm -rf ~</code>
+        stays one inert argument. Local targets must be absolute and
+        dot-segment free, and are existence-checked before launch. Launching is
+        sequential and staggered, which bounds the blast radius of even an
+        approved 64-resource plan.</p>
+    </div>
+    <div class="card">
+      <h3>Custom kinds</h3>
+      <p><code>custom:*</code> dispatches only through handlers the user
+        registered out of band. An unregistered custom kind fails; it never
+        guesses a handler.</p>
+    </div>
+  </div>
+
+  <h2 id="limits">What it does not defend against</h2>
+
+  <p>
+    Stated plainly, because a security model is defined by its edges.
+  </p>
+
+  <ul>
+    <li><strong>A malicious <em>trusted</em> manifest.</strong> If you pin a key
+      or install a manifest locally, its DANGEROUS resources are one consent
+      away. Trust is the boundary; choose pins accordingly.</li>
+    <li><strong>What handlers do after launch.</strong> Once the browser has the
+      URL or the terminal is open, mURL's control ends. It does not sandbox
+      handlers.</li>
+    <li><strong>Rollback of <code>@latest</code>.</strong> An attacker who
+      captured an old, validly signed manifest can replay it until it expires.
+      <code>expires</code> bounds the window; monotonic version enforcement — a
+      transparency log — is out of scope before 1.0.</li>
+    <li><strong>Desktop-environment consent gaps.</strong> On Linux, scheme
+      activation opens a terminal to ask for consent; a terminal-less or
+      compromised session degrades to fail-closed rather than to a GUI prompt.
+      Providing a native consent surface is the resident daemon's reason to
+      exist.</li>
+    <li><strong>Local attackers.</strong> Config, trust store and name store are
+      plain files under the user's account, protected by OS file permissions
+      only. An attacker who can write to them has already won the account.</li>
+    <li><strong>Phishing by name.</strong> The grammar removes the mechanical
+      tricks, but a plausible-looking authority is still a plausible-looking
+      authority. This is a partially-mitigated threat, and the threat model says
+      so.</li>
+  </ul>
+
+  <ul class="linklist">
+    <li>
+      <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/threat-model.md">The full threat model</a>
+      <span>Eighteen enumerated threats — parser attacks, laundering, SSRF, cache poisoning, rollback, argument injection — each with its defenses, its residual risk, and a status of mitigated, partial, or planned.</span>
+    </li>
+    <li>
+      <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/security.md">The security model document</a>
+      <span>The normative detail behind this summary.</span>
+    </li>
+    <li>
+      <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/trust-model.md">The trust model</a>
+      <span>Signatures, key pinning, and the argument for not building a PKI.</span>
+    </li>
+    <li>
+      <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/daemon.md">The daemon</a>
+      <span>The resident consent surface, its wire protocol, and its own IPC threat model.</span>
+    </li>
+    <li>
+      <a href="https://github.com/thatwasyahya/mURL/blob/main/SECURITY.md">Reporting a vulnerability</a>
+      <span>Where to send it, and what to expect.</span>
+    </li>
+  </ul>
+
+</div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p>mURL — experimental. Format v0.2, reference implementation 0.4.0.</p>
+    <p>
+      <a href="index.html">Overview</a> ·
+      <a href="spec.html">Specification</a> ·
+      <a href="https://github.com/thatwasyahya/mURL">Repository</a> ·
+      <a href="https://github.com/thatwasyahya/mURL/blob/main/SECURITY.md">Report a vulnerability</a>
+    </p>
+    <p>Licensed under MIT OR Apache-2.0, at your option.</p>
+  </div>
+</footer>
+
+</body>
+</html>

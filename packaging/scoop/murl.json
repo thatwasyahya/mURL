@@ -1,0 +1,56 @@
+{
+    "##": [
+        "Scoop manifest for murl (Windows). JSON has no comment syntax, so",
+        "these notes live in the '##' key, which Scoop ignores.",
+        "",
+        "BEFORE PUBLISHING a human must replace the placeholder hash below.",
+        "The release workflow uploads murl-<tag>-x86_64-pc-windows-msvc.zip",
+        ".sha256 next to the archive; that file contains the bare uppercase",
+        "hex digest (PowerShell's Get-FileHash format), no filename. Scoop",
+        "accepts it in any case. Leaving the zeros in place makes install",
+        "fail on the checksum rather than install something unverified.",
+        "",
+        "Install from a local file while testing:",
+        "  scoop install .\\packaging\\scoop\\murl.json",
+        "Publishing options: a bucket repo (thatwasyahya/scoop-murl), added",
+        "with `scoop bucket add murl https://github.com/...`, or submission",
+        "to the community 'extras' bucket.",
+        "",
+        "Only x86_64 is published. Scoop's 'arm64' architecture is omitted",
+        "rather than pointed at an archive that does not exist."
+    ],
+    "version": "0.4.0",
+    "description": "Resolve one murl:// name to a whole set of resources, under consent. Experimental.",
+    "homepage": "https://github.com/thatwasyahya/mURL",
+    "license": "MIT|Apache-2.0",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/thatwasyahya/mURL/releases/download/v0.4.0/murl-v0.4.0-x86_64-pc-windows-msvc.zip",
+            "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "extract_dir": "murl-v0.4.0-x86_64-pc-windows-msvc"
+        }
+    },
+    "bin": "murl.exe",
+    "notes": [
+        "murl does not register the murl:// scheme on install. To make murl:// links clickable:",
+        "    murl os install",
+        "It writes HKCU\\Software\\Classes\\murl only - per-user, no elevation, and `murl os uninstall` removes it.",
+        "The registration records this executable's absolute path, so re-run it after `scoop update murl` moves the binary.",
+        "",
+        "murl-daemon (the optional resident consent surface) is not in the release archive and so is not installed here."
+    ],
+    "checkver": {
+        "github": "https://github.com/thatwasyahya/mURL"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/thatwasyahya/mURL/releases/download/v$version/murl-v$version-x86_64-pc-windows-msvc.zip",
+                "extract_dir": "murl-v$version-x86_64-pc-windows-msvc"
+            }
+        },
+        "hash": {
+            "url": "$url.sha256"
+        }
+    }
+}

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mURL — one identifier, a whole working context</title>
+<meta name="description" content="mURL is an experimental OS-level addressing primitive: one identifier resolves to a manifest describing a set of resources, dispatched under a consent-based security policy.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="index.html">murl://</a>
+    <nav>
+      <a href="index.html" aria-current="page">Overview</a>
+      <a href="spec.html">Specification</a>
+      <a href="security.html">Security</a>
+      <a href="https://github.com/thatwasyahya/mURL">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+
+  <h1>One identifier that opens a whole working context.</h1>
+
+  <p class="lede">
+    A URL addresses one resource. An mURL addresses a <em>set</em> of them —
+    a repository, its docs, its dashboard, a working directory, a terminal —
+    under a single name that can be inspected before anything happens.
+  </p>
+
+  <ul class="badges">
+    <li class="badge warn">experimental</li>
+    <li class="badge">format v0.2</li>
+    <li class="badge">release 0.4.0</li>
+    <li class="badge">Rust · MIT OR Apache-2.0</li>
+  </ul>
+
+  <div class="note">
+    <p><strong>This is a proposal with a working implementation, not a standard.</strong>
+    The <code>murl</code> scheme is unregistered, no third party has adopted it,
+    and the format may still change before 1.0. Read it as a design worth
+    arguing with — see <a href="spec.html">the specification page</a> for what
+    that means in practice.</p>
+  </div>
+
+  <h2>The idea in two lines</h2>
+
+<pre><code>URL   :  identifier ──────────────▶ one resource
+mURL  :  identifier ──▶ manifest ──▶ { resource, resource, resource, … }</code></pre>
+
+  <p>
+    The indirection through a manifest is the whole point. Because the set is
+    a document rather than a string, it has a canonical byte form — so it can
+    be hashed, signed, versioned, cached, diffed, and above all
+    <em>shown to you before it acts</em>. An mURL is a name, never a container.
+  </p>
+
+  <h2>What resolution looks like</h2>
+
+  <figure class="figure">
+<pre><code>                    murl://acme.example/project-x
+                                 │
+                        ┌────────▼────────┐
+                        │  mURL resolver  │  parse → fetch manifest →
+                        │                 │  validate → verify → policy
+                        └────────┬────────┘
+                                 │  consent: "Project X wants to open…"
+     ┌──────────┬──────────┬─────┴─────┬───────────┬──────────┐
+     ▼          ▼          ▼           ▼           ▼          ▼
+  GitHub      Docs       Jira       Grafana   ~/projects   terminal
+     │          │          │           │       /project-x     │
+     ▼          ▼          ▼           ▼           ▼          ▼
+  browser    browser    browser     browser    file mgr   terminal app
+   SAFE       SAFE       SAFE        SAFE     SENSITIVE   DANGEROUS</code></pre>
+    <figcaption>
+      Every leaf is an ordinary URL or path handed to the same application you
+      use today. mURL is a composition layer above locators, not a replacement
+      for them.
+    </figcaption>
+  </figure>
+
+  <h2>A manifest</h2>
+
+  <p>
+    Publishing a namespace means serving static JSON from a web server under
+    <code>/.well-known/murl/</code>. There is no registry, no account, and no
+    new infrastructure.
+  </p>
+
+<pre><code>{
+  "murlVersion": "0.2",
+  "id": "murl://local/project-x",
+  "name": "Project X",
+  "resources": [
+    { "id": "source",    "kind": "https",    "target": "https://github.com/acme/project-x" },
+    { "id": "workspace", "kind": "dir",      "target": "~/projects/project-x" },
+    { "id": "term",      "kind": "terminal", "target": "~/projects/project-x", "dependsOn": ["workspace"] }
+  ]
+}</code></pre>
+
+  <p class="small">
+    Resources may also be <code>file</code>, a nested <code>murl</code>, or a
+    <code>custom:*</code> kind dispatched through a handler you registered
+    yourself. Full schema in
+    <a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#5-the-manifest">specification §5</a>.
+  </p>
+
+  <h2>Three tiers, decided locally</h2>
+
+  <p>
+    An identifier that can make an operating system open many things is an
+    attack primitive by default. Classification derives from what a resource
+    <em>is</em> — its kind plus its target — never from what a manifest claims
+    about itself.
+  </p>
+
+  <div class="cards three">
+    <div class="card tier tier-safe">
+      <span class="tier-name">SAFE</span>
+      <h3>https</h3>
+      <p>Rendered by a sandboxed browser. Worst case is roughly a tab.</p>
+    </div>
+    <div class="card tier tier-sensitive">
+      <span class="tier-name">SENSITIVE</span>
+      <h3>file, dir</h3>
+      <p>Exposes or touches local data. Prompts, always, with the path shown.</p>
+    </div>
+    <div class="card tier tier-dangerous">
+      <span class="tier-name">DANGEROUS</span>
+      <h3>terminal, custom:*, executable-ish files</h3>
+      <p>Opening it is, or is one dialog from, code execution. From an
+      untrusted manifest this is a refusal — not a prompt.</p>
+    </div>
+  </div>
+
+  <p>
+    That last rule is the keystone. Users can be talked into one click, and one
+    click is exactly what a hostile mURL gets; making terminals from unknown
+    senders un-clickable removes the social-engineering path rather than
+    warning about it. <a href="security.html">More on the security model →</a>
+  </p>
+
+  <h2>Try it</h2>
+
+  <p>
+    There is no published package yet. Build from source — the workspace is
+    four Rust crates with no unsafe code.
+  </p>
+
+<pre><code>git clone https://github.com/thatwasyahya/mURL &amp;&amp; cd mURL
+cargo build
+
+# a hermetic guided tour: temp state, dry-run open, auto-cleanup
+bash examples/demo.sh</code></pre>
+
+  <p>Or drive it by hand:</p>
+
+<pre><code>murl create --name "Project X"                # write a starter manifest
+murl validate project-x.murl.json
+murl name add project-x project-x.murl.json   # install as murl://local/project-x
+
+murl resolve murl://local/project-x           # see the full plan — nothing opens
+murl open murl://local/project-x              # consent, then dispatch
+murl open 'murl://local/project-x#workspace'  # just one part of it
+
+murl keygen &amp;&amp; murl sign project-x.murl.json  # sign it
+murl os install                               # make murl:// clickable</code></pre>
+
+  <p class="small">
+    <code>murl resolve</code> before <code>murl open</code> is the habit worth
+    forming: it prints the fully resolved plan, every tier, and the trust status
+    of the manifest, without dispatching anything.
+  </p>
+
+  <h2>Read further</h2>
+
+  <ul class="linklist">
+    <li>
+      <a href="spec.html">The specification</a>
+      <span>Grammar, manifest format, resolution, canonical form and signatures — plus the conformance suite a second implementation can test against.</span>
+    </li>
+    <li>
+      <a href="security.html">The security model</a>
+      <span>Tiers, consent, trust, the hardening that resolution and dispatch apply — and what none of it defends against.</span>
+    </li>
+    <li>
+      <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/concept.md">Why this exists</a>
+      <span>The case for addressing destinations rather than resources, and an honest map of the neighbors that partly do it already.</span>
+    </li>
+    <li>
+      <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/architecture.md">Architecture</a>
+      <span>Crate layout, the resolution pipeline, and the reasoning behind each decision.</span>
+    </li>
+    <li>
+      <a href="https://github.com/thatwasyahya/mURL">The repository</a>
+      <span>Source, tests, fuzz targets, conformance vectors, and issues.</span>
+    </li>
+  </ul>
+
+</div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p>mURL — experimental. Format v0.2, reference implementation 0.4.0.</p>
+    <p>
+      <a href="https://github.com/thatwasyahya/mURL">Repository</a> ·
+      <a href="spec.html">Specification</a> ·
+      <a href="security.html">Security</a> ·
+      <a href="https://github.com/thatwasyahya/mURL/blob/main/SECURITY.md">Report a vulnerability</a>
+    </p>
+    <p>Licensed under MIT OR Apache-2.0, at your option.</p>
+  </div>
+</footer>
+
+</body>
+</html>

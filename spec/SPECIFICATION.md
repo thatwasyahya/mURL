@@ -61,7 +61,7 @@ container.
 murl        = "murl://" authority "/" name [ "@" version ]
               [ "?" query ] [ "#" selector ]
 
-authority   = "local" / host [ ":" port ]
+authority   = "local" / host [ ":" port ]  ; `local` takes no port
 host        = label *( "." label )            ; lowercase after parsing
 label       = 1*63( lc-alnum / "-" )          ; no leading/trailing "-"
 port        = 1*5DIGIT                        ; 1..65535
@@ -80,6 +80,7 @@ sel-item    = resource-id
             / "tag=" tag                      ; tag   = [a-z0-9-]{1,32}
 resource-id = 1*64( lc-alnum / "-" / "_" )    ; first char lc-alnum
 query       = *512qchar                       ; reserved, no semantics yet
+qchar       = %x21-7E except "#"               ; printable ASCII, no fragment
 lc-alnum    = %x61-7A / DIGIT
 ```
 
@@ -99,6 +100,7 @@ field grammars they select against (§5.2–5.3) — one definition, shared.
 | Decoded segments | valid UTF-8, no control characters, no `/` or `\` | injection into stores/URLs |
 | `@` | at most once, only as the version marker on the final segment | unambiguous parse |
 | Authority case | folded to lowercase | DNS semantics |
+| `local` authority | MUST NOT carry a port | it names the local store, not a network endpoint; the grammar's `host` production would otherwise admit `local:80` |
 | IDN authorities | must be punycoded (`xn--…`) | parser rejects non-ASCII authorities |
 
 A parser MUST reject any input violating these rules. A parser MUST NOT

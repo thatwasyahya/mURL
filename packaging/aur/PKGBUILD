@@ -1,0 +1,80 @@
+# Maintainer: FILL IN <Name Surname> <you@example.com>
+#
+# AUR package for murl. This builds from the signed git tag rather than from
+# a release archive: the archives contain only the `murl` CLI, and Arch users
+# expect to get `murl-daemon` too. Building from source also means the
+# package matches the exact commit the tag points at, which is checkable.
+#
+# Publish as the AUR package name `murl`. Before the first push a human must:
+#   * put a real name and address in the Maintainer line above
+#   * regenerate .SRCINFO:   makepkg --printsrcinfo > .SRCINFO
+#   * bump pkgver (and reset pkgrel=1) for every upstream tag
+#
+# There is no VCS-suffixed variant here; a separate `murl-git` package would
+# track main and is not what this file is.
+
+pkgname=murl
+pkgver=0.4.0
+pkgrel=1
+pkgdesc="Resolve one murl:// name to a whole set of resources, under consent (experimental)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/thatwasyahya/mURL"
+license=('MIT' 'Apache-2.0')
+depends=('gcc-libs')
+makedepends=('cargo' 'git')
+options=('!lto')  # the release profile already sets lto = "thin"
+source=("$pkgname-$pkgver::git+$url.git#tag=v$pkgver")
+sha256sums=('SKIP')  # a git tag is pinned by the tag itself, not by a digest
+
+_srcdir="$pkgname-$pkgver"
+
+prepare() {
+    cd "$_srcdir"
+    # Fetch dependencies up front so build() can run with --frozen: the
+    # network is only touched here, and Cargo.lock is honored exactly.
+    export RUSTUP_TOOLCHAIN=stable
+    cargo fetch --locked --target "$(rustc -vV | sed -n 's/^host: //p')"
+}
+
+build() {
+    cd "$_srcdir"
+    export RUSTUP_TOOLCHAIN=stable
+    export CARGO_TARGET_DIR=target
+    # Both binaries: the CLI and the optional resident consent daemon.
+    cargo build --frozen --release -p murl-cli -p murl-daemon
+}
+
+check() {
+    cd "$_srcdir"
+    export RUSTUP_TOOLCHAIN=stable
+    export CARGO_TARGET_DIR=target
+    # The suite is hermetic — it uses temporary state directories, never the
+    # builder's, and dispatch is behind a trait so nothing is launched.
+    cargo test --frozen --release --workspace
+}
+
+package() {
+    cd "$_srcdir"
+
+    install -Dm0755 "target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
+    install -Dm0755 "target/release/murl-daemon" "$pkgdir/usr/bin/murl-daemon"
+
+    # Dual-licensed: ship both texts. Neither is one of the /usr/share/licenses
+    # common licenses in the form the project distributes them, so both go in.
+    install -Dm0644 LICENSE-MIT "$pkgdir/usr/share/licenses/$pkgname/LICENSE-MIT"
+    install -Dm0644 LICENSE-APACHE "$pkgdir/usr/share/licenses/$pkgname/LICENSE-APACHE"
+
+    install -Dm0644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+    install -Dm0644 CHANGELOG.md "$pkgdir/usr/share/doc/$pkgname/CHANGELOG.md"
+    for doc in docs/*.md; do
+        install -Dm0644 "$doc" "$pkgdir/usr/share/doc/$pkgname/$doc"
+    done
+    install -Dm0644 spec/SPECIFICATION.md \
+        "$pkgdir/usr/share/doc/$pkgname/spec/SPECIFICATION.md"
+
+    # No .desktop file is installed. Scheme registration is per-user and
+    # deliberately explicit — `murl os install` writes it into the user's
+    # ~/.local/share/applications with the absolute path of the binary. A
+    # package-wide association would register the handler for users who never
+    # asked for it, which is the opposite of how consent works here.
+}

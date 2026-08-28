@@ -1,0 +1,102 @@
+# Deploy the hand-written documentation site in docs/site/ to GitHub Pages.
+#
+# ONE-TIME MANUAL STEP: a human must enable Pages once, in
+# Settings → Pages → "Build and deployment" → Source: **GitHub Actions**.
+# Until that is done this workflow fails at the deploy step with a 404 —
+# the API refuses to create a deployment for a repository with Pages off.
+# Note also that Pages on a private repository requires a plan that allows
+# it; this repository is currently private.
+#
+# The site has no build step on purpose: it is static HTML plus one
+# stylesheet, so "build" is just uploading the directory as-is.
+
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. In-progress runs are allowed to finish rather
+# than being cancelled, so a half-uploaded artifact never becomes the live
+# site.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Cheap guard: a relative href/src that points at nothing would ship a
+      # broken site, and there is no build step that would otherwise notice.
+      - name: Check internal links and tag balance
+        working-directory: docs/site
+        run: |
+          python3 - <<'PY'
+          import glob, os, sys
+          from html.parser import HTMLParser
+
+          VOID = {"area","base","br","col","embed","hr","img","input","link",
+                  "meta","param","source","track","wbr"}
+
+          class Check(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.bad_links = []
+                  self.stack = []
+                  self.unbalanced = []
+
+              def handle_starttag(self, tag, attrs):
+                  for k, v in attrs:
+                      if k in ("href", "src") and v and not v.startswith(
+                              ("http://", "https://", "#", "mailto:", "data:")):
+                          if not os.path.exists(v.split("#")[0]):
+                              self.bad_links.append(v)
+                  if tag not in VOID:
+                      self.stack.append(tag)
+
+              def handle_endtag(self, tag):
+                  if tag in VOID:
+                      return
+                  if not self.stack or self.stack[-1] != tag:
+                      self.unbalanced.append((tag, list(self.stack[-3:])))
+                  else:
+                      self.stack.pop()
+
+          failed = False
+          for f in sorted(glob.glob("*.html")):
+              c = Check()
+              c.feed(open(f, encoding="utf-8").read())
+              c.close()
+              if c.bad_links:
+                  print(f"{f}: dangling links {c.bad_links}"); failed = True
+              if c.unbalanced:
+                  print(f"{f}: unbalanced tags {c.unbalanced}"); failed = True
+              if c.stack:
+                  print(f"{f}: unclosed tags {c.stack}"); failed = True
+          sys.exit(1 if failed else 0)
+          PY
+          echo "docs/site: links resolve, tags balance"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
