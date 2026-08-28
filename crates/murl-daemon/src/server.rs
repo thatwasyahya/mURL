@@ -227,6 +227,14 @@ mod unix_server {
                     continue;
                 }
             };
+            // Connections are served one at a time, so a peer that connects
+            // and then says nothing would wedge the daemon for every other
+            // caller. A read timeout bounds that (threat D-3); consent can
+            // take a while, so the window is generous rather than tight.
+            if let Err(e) = stream.set_read_timeout(Some(std::time::Duration::from_secs(300))) {
+                eprintln!("murl-daemon: cannot set read timeout: {e}");
+                continue;
+            }
             let write_half = match stream.try_clone() {
                 Ok(w) => w,
                 Err(e) => {

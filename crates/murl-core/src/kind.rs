@@ -123,9 +123,16 @@ pub const EXECUTABLE_EXTENSIONS: &[&str] = &[
 ];
 
 /// Case-insensitive executable-extension check on a target path.
+///
+/// Trailing dots and spaces are stripped before the extension is read.
+/// Windows discards them when resolving a filename, so `setup.exe.` and
+/// `setup.exe ` both open `setup.exe` — reading the extension literally
+/// would classify those as SENSITIVE and hand an executable the
+/// consent path meant for a document.
 pub fn has_executable_extension(target: &str) -> bool {
     let lower = target.to_ascii_lowercase();
     let name = lower.rsplit(['/', '\\']).next().unwrap_or(&lower);
+    let name = name.trim_end_matches(['.', ' ']);
     match name.rsplit_once('.') {
         Some((_, ext)) => EXECUTABLE_EXTENSIONS.contains(&ext),
         None => false,
@@ -185,6 +192,12 @@ mod tests {
         assert!(has_executable_extension("C:\\tools\\setup.EXE"));
         assert!(has_executable_extension("/home/u/app.desktop"));
         assert!(has_executable_extension("/home/u/evil.tar.gz.bat"));
+        // Windows drops trailing dots and spaces when opening a file, so
+        // these all reach the same executable.
+        assert!(has_executable_extension("C:\\tools\\setup.exe."));
+        assert!(has_executable_extension("C:\\tools\\setup.exe "));
+        assert!(has_executable_extension("C:\\tools\\setup.exe. . "));
+        assert!(!has_executable_extension("/home/u/report.pdf."));
         assert!(!has_executable_extension("/home/u/report.pdf"));
         assert!(!has_executable_extension("/home/u/README"));
         assert!(!has_executable_extension("/home/u/archive.tar.gz"));

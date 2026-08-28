@@ -329,3 +329,69 @@ fn approval_count_mismatch_is_an_error() {
     let launcher = RecordingLauncher::default();
     assert!(execute(&r, &[], &opener(), &launcher, &env.limits).is_err());
 }
+
+/// Adversarial-review hardening: `Path::join` replaces the base on an
+/// absolute argument, so `~//etc/passwd` used to expand to `/etc/passwd`
+/// while the plan displayed a path under the home directory.
+#[test]
+fn tilde_paths_cannot_escape_the_home_directory() {
+    let env = Env::new("d-tilde");
+    let m = manifest(
+        "P",
+        json!([
+            res("escape", "file", "~//etc/passwd"),
+            res("normal", "file", "~/notes.txt"),
+        ]),
+    );
+    env.add_local("murl://local/p", &bytes(&m));
+    let r = resolve(&env, "murl://local/p");
+
+    let launcher = RecordingLauncher::default();
+    let approvals = vec![Approval::Approved; 2];
+    let report = execute(&r, &approvals, &opener(), &launcher, &env.limits).unwrap();
+
+    let escape = &report.outcomes[0];
+    assert_eq!(escape.status, OutcomeStatus::Failed, "{escape:?}");
+    assert!(
+        escape.detail.as_deref().unwrap_or("").contains("escape"),
+        "{escape:?}"
+    );
+    // Nothing under /etc was ever handed to a launcher.
+    for (argv, _) in launcher.launched.borrow().iter() {
+        assert!(!argv.iter().any(|a| a.contains("/etc/passwd")), "{argv:?}");
+    }
+}
+
+/// Adversarial-review hardening: an empty handler template would put the
+/// resource target into argv[0] — that is, execute the target as a program.
+#[test]
+fn empty_handler_templates_never_execute_the_target() {
+    let env = Env::new("d-empty-argv");
+    let m = manifest(
+        "P",
+        json!([
+            res("web", "https", "https://example.com/x"),
+            res("v", "custom:thing", "/usr/bin/whatever"),
+        ]),
+    );
+    env.add_local("murl://local/p", &bytes(&m));
+    let r = resolve(&env, "murl://local/p");
+
+    // The shapes a hand-edited handlers.json can take.
+    let mut cfg = opener();
+    cfg.open_argv = Vec::new();
+    cfg.custom.insert("thing".into(), Vec::new());
+
+    let launcher = RecordingLauncher::default();
+    let approvals = vec![Approval::Approved; 2];
+    let report = execute(&r, &approvals, &cfg, &launcher, &env.limits).unwrap();
+    assert!(
+        launcher.launched.borrow().is_empty(),
+        "nothing may launch: {:?}",
+        launcher.launched
+    );
+    assert!(report
+        .outcomes
+        .iter()
+        .all(|o| o.status == OutcomeStatus::Failed));
+}

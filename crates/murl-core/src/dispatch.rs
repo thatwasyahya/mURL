@@ -75,20 +75,41 @@ impl OpenerConfig {
     }
 
     /// Expand `~`/`~/x` against the configured home directory.
+    ///
+    /// `Path::join` *replaces* the base when given an absolute path, so a
+    /// naive `home.join(&target[2..])` turns `~//etc/passwd` into
+    /// `/etc/passwd` — the consent prompt would show a path under the home
+    /// directory while something else entirely was opened. The remainder is
+    /// therefore joined segment by segment, and an empty or rooted
+    /// remainder is refused outright.
     fn expand_path(&self, target: &str) -> std::result::Result<PathBuf, String> {
-        if target == "~" || target.starts_with("~/") {
-            let home = self
-                .home_dir
-                .as_ref()
-                .ok_or_else(|| "no home directory available for ~ expansion".to_string())?;
-            if target == "~" {
-                Ok(home.clone())
-            } else {
-                Ok(home.join(&target[2..]))
-            }
-        } else {
-            Ok(PathBuf::from(target))
+        let Some(rest) = target.strip_prefix('~') else {
+            return Ok(PathBuf::from(target));
+        };
+        let home = self
+            .home_dir
+            .as_ref()
+            .ok_or_else(|| "no home directory available for ~ expansion".to_string())?;
+        if rest.is_empty() {
+            return Ok(home.clone());
         }
+        let Some(rest) = rest.strip_prefix('/') else {
+            // `~user/...` is not a form mURL defines.
+            return Err(format!("`{target}` is not a `~` or `~/…` path"));
+        };
+        let mut path = home.clone();
+        for segment in rest.split('/') {
+            if segment.is_empty() {
+                return Err(format!(
+                    "`{target}` has an empty path segment; it would escape the home directory"
+                ));
+            }
+            if segment == "." || segment == ".." {
+                return Err(format!("`{target}` contains a dot segment"));
+            }
+            path.push(segment);
+        }
+        Ok(path)
     }
 }
 
@@ -241,6 +262,17 @@ pub fn execute(
     })
 }
 
+/// Build argv for the platform opener. Same reasoning as [`substitute`]: an
+/// empty `open_argv` must not leave the target sitting in argv[0].
+fn open_with(opener: &OpenerConfig, target: &str) -> Vec<String> {
+    if opener.open_argv.is_empty() {
+        return Vec::new();
+    }
+    let mut argv = opener.open_argv.clone();
+    argv.push(target.to_owned());
+    argv
+}
+
 fn dispatch_one(
     pr: &crate::resolver::PlannedResource,
     opener: &OpenerConfig,
@@ -248,11 +280,7 @@ fn dispatch_one(
 ) -> (OutcomeStatus, Option<String>) {
     let target = &pr.resource.target;
     match &pr.kind {
-        Kind::Https => {
-            let mut argv = opener.open_argv.clone();
-            argv.push(target.clone());
-            launch(launcher, &argv, None)
-        }
+        Kind::Https => launch(launcher, &open_with(opener, target), None),
         Kind::File | Kind::Dir => match opener.expand_path(target) {
             Err(e) => (OutcomeStatus::Failed, Some(e)),
             Ok(path) => {
@@ -262,9 +290,7 @@ fn dispatch_one(
                         Some(format!("{} does not exist", path.display())),
                     );
                 }
-                let mut argv = opener.open_argv.clone();
-                argv.push(path.to_string_lossy().into_owned());
-                launch(launcher, &argv, None)
+                launch(launcher, &open_with(opener, &path.to_string_lossy()), None)
             }
         },
         Kind::Terminal => match opener.expand_path(target) {
@@ -310,11 +336,7 @@ fn dispatch_one(
         },
         // Map locations and mail drafts go to the platform opener like any
         // other URI: the OS already knows which app handles them.
-        Kind::Geo | Kind::Mailto => {
-            let mut argv = opener.open_argv.clone();
-            argv.push(target.clone());
-            launch(launcher, &argv, None)
-        }
+        Kind::Geo | Kind::Mailto => launch(launcher, &open_with(opener, target), None),
         // Containers are spliced during resolution and never dispatched;
         // this arm is defense in depth.
         Kind::Murl => (OutcomeStatus::Skipped, Some("container resource".into())),
@@ -338,6 +360,17 @@ fn launch(
     argv: &[String],
     cwd: Option<&Path>,
 ) -> (OutcomeStatus, Option<String>) {
+    // An empty handler template would make `substitute` produce `[target]`,
+    // and argv[0] is the *program* — the resource's own target would be
+    // executed as a command. `murl handler` refuses to write an empty argv,
+    // but handlers.json is a file, so the invariant is enforced where it
+    // matters rather than only where it is usually created.
+    if argv.is_empty() || argv[0].trim().is_empty() {
+        return (
+            OutcomeStatus::Failed,
+            Some("handler is configured with an empty program; refusing to launch".into()),
+        );
+    }
     match launcher.launch(argv, cwd) {
         Ok(()) => (OutcomeStatus::Opened, None),
         Err(e) => (OutcomeStatus::Failed, Some(e.to_string())),
@@ -347,7 +380,14 @@ fn launch(
 /// Substitute `{target}` into an argv template. Substitution happens *inside
 /// a single argv element* — the target can never become extra arguments, let
 /// alone shell syntax. If no element mentions `{target}`, it is appended.
+///
+/// An empty template yields an empty argv rather than `[target]`, because
+/// argv[0] is the program: appending to nothing would run the resource's own
+/// target as a command. [`launch`] rejects the empty argv.
 fn substitute(template: &[String], target: &str) -> Vec<String> {
+    if template.is_empty() {
+        return Vec::new();
+    }
     let mut argv: Vec<String> = Vec::with_capacity(template.len() + 1);
     let mut used = false;
     for part in template {
