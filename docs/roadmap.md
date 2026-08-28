@@ -73,14 +73,42 @@ Focus: replace the terminal consent compromise.
 
 ## v1.0 — freeze and register
 
-Gate: at least one non-reference implementation consuming the conformance
-vectors, and real-world usage feedback on the consent model.
+**Gate (unchanged and deliberately not met): at least one non-reference
+implementation passing `spec/conformance/`, and real usage feedback on the
+consent model.** Everything that does not require those is done:
 
-- [ ] Spec 1.0: stable grammar, manifest, resolution, trust; MUST-level
-      conformance statements complete
-- [ ] IANA provisional scheme registration (`murl`, RFC 7595 §5.2) and
-      `application/murl+json` media-type registration
-- [ ] Semantic-versioning commitment for murl-core API
+- [x] Compatibility policy and stability labels: `docs/stability.md`,
+      with `#[non_exhaustive]` on the enums it commits to growing
+- [x] IANA registration templates written in full and **not submitted**:
+      `spec/registration/` (RFC 7595 provisional scheme, RFC 6838/6839
+      media type). Registering a scheme claims a global namespace; doing it
+      before anyone else has implemented the format would be the wrong
+      order, and each template says so.
+- [x] Conformance suite + schema check wired into CI
+- [ ] Spec 1.0 freeze — waits on the gate
+- [ ] Submit the registrations — waits on the gate
+
+## Review findings folded in (2026-08-28)
+
+An adversarial review of the v0.2–v1.0-prep work (five reviewers, each
+finding then faced with two skeptics told to refute it) produced eleven real
+defects, all now fixed with regressions:
+
+* the daemon ignored the user's `config.json`/`handlers.json`, so a
+  configured `"dangerous": "deny"` became a clickable prompt (T-18);
+* `--offline` was silently dropped when routing through the daemon — a
+  fail-**open**;
+* four bundle import defects (silent name collisions, decoded segments
+  re-parsed as grammar, missing identity binding, unreachable `--as`);
+* argument injection through the Windows OS handler, since the activated
+  URL is substituted into a command template before argv is parsed (T-17);
+* tilde paths escaping the home directory via `Path::join`, empty handler
+  templates executing the target as a program, Windows trailing-dot
+  executable classification, and an unbounded daemon read.
+
+Worth recording *why* they existed: every one lived in a seam between two
+components that each looked correct alone. That is the class of defect this
+project should keep spending review budget on.
 
 ## Explicitly deferred (with reasons)
 

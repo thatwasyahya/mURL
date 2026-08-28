@@ -6,6 +6,39 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-08-28
+
+Three roadmap milestones (v0.3 daemon, v0.4 platform completeness, v1.0
+preparation) plus the fixes from an adversarial review of all of it.
+
+### Fixed — adversarial review
+
+Eleven defects, each with a regression test that fails without its fix.
+Every one lived in a seam between two components that looked correct alone:
+
+* **The daemon ignored the user's configuration** — it built
+  `Policy::default()` and platform-default handlers and never read
+  `config.json`/`handlers.json`, so a configured `"dangerous": "deny"`
+  became a clickable prompt and configured handlers vanished. Since `murl
+  open` routes through the daemon by default, this was the normal path.
+  Configuration now lives in `murl_core::config`, read by one loader.
+  (threat T-18)
+* **`--offline` was silently dropped** when routing through the daemon — a
+  fail-*open*. Flags the protocol cannot carry now make the CLI decline the
+  daemon path; `--daemon` turns that into an explicit error.
+* **Argument injection through the Windows OS handler**: the activated URL
+  is substituted into a command template before argv is parsed, so a link
+  containing a quote could append `--allow-dangerous`. All platforms now
+  register `murl open-url`, which ignores approval flags. (threat T-17)
+* **Four bundle-import defects**: entries silently overwriting each other,
+  decoded segments re-parsed as grammar (`tool%401` landing in the pinned
+  `tool@1` slot), missing identity binding, and an unreachable `--as`.
+* **Tilde paths escaping the home directory** (`Path::join` replaces the
+  base on an absolute argument, so `~//etc/passwd` opened `/etc/passwd`
+  while the prompt showed a home path), **empty handler templates executing
+  the target as a program**, **Windows trailing-dot executable
+  classification**, and an **unbounded daemon read**.
+
 ### Added — v0.4 platform completeness
 
 * **macOS app bundle** (`packaging/macos/build-app.sh` + `Info.plist.in`):
