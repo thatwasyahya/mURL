@@ -19,12 +19,12 @@
 # that would 404.
 
 PackageIdentifier: thatwasyahya.murl
-PackageVersion: 0.4.0
+PackageVersion: 0.5.0
 MinimumOSVersion: 10.0.0.0
 InstallerType: zip
 NestedInstallerType: portable
 NestedInstallerFiles:
-  - RelativeFilePath: murl-v0.4.0-x86_64-pc-windows-msvc\murl.exe
+  - RelativeFilePath: murl-v0.5.0-x86_64-pc-windows-msvc\murl.exe
     PortableCommandAlias: murl
 UpgradeBehavior: install
 Commands:
@@ -32,7 +32,7 @@ Commands:
 ReleaseDate: 2026-08-28
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/thatwasyahya/mURL/releases/download/v0.4.0/murl-v0.4.0-x86_64-pc-windows-msvc.zip
-    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+    InstallerUrl: https://github.com/thatwasyahya/mURL/releases/download/v0.5.0/murl-v0.5.0-x86_64-pc-windows-msvc.zip
+    InstallerSha256: 1A969997D9BE1F8B59B8D3415F498B8AF85E22BD3B48E3742563083FCA959333
 ManifestType: installer
 ManifestVersion: 1.6.0

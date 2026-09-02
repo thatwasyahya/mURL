@@ -34,13 +34,25 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
-      - run: cargo build --release --target ${{ matrix.target }} -p murl-cli
+      # murl-daemon is Unix-only (its transport is a Unix socket), so the
+      # Windows archive is CLI-only. Everywhere else both ship: the daemon
+      # is what provides the consent dialog, and on macOS an activation has
+      # no terminal, so without it consent can only refuse.
+      - name: build
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cargo build --release --target ${{ matrix.target }} -p murl-cli
+          else
+            cargo build --release --target ${{ matrix.target }} -p murl-cli -p murl-daemon
+          fi
       - name: package (unix)
         if: runner.os != 'Windows'
         run: |
           staging="murl-${{ github.ref_name }}-${{ matrix.target }}"
           mkdir "$staging"
           cp "target/${{ matrix.target }}/release/murl" "$staging/"
+          cp "target/${{ matrix.target }}/release/murl-daemon" "$staging/"
           cp README.md CHANGELOG.md LICENSE-MIT LICENSE-APACHE "$staging/"
           tar czf "$staging.tar.gz" "$staging"
           shasum -a 256 "$staging.tar.gz" > "$staging.tar.gz.sha256"

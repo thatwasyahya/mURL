@@ -14,7 +14,7 @@
 # track main and is not what this file is.
 
 pkgname=murl
-pkgver=0.4.0
+pkgver=0.5.0
 pkgrel=1
 pkgdesc="Resolve one murl:// name to a whole set of resources, under consent (experimental)"
 arch=('x86_64' 'aarch64')

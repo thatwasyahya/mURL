@@ -10,14 +10,14 @@
 # decisions it encodes (author line, tags, support URL) have not been made.
 #
 # All three go in:
-#   manifests/t/thatwasyahya/murl/0.4.0/
+#   manifests/t/thatwasyahya/murl/0.5.0/
 #
 # Validate and test locally before opening a PR:
 #   winget validate --manifest packaging\winget
 #   winget install --manifest packaging\winget
 
 PackageIdentifier: thatwasyahya.murl
-PackageVersion: 0.4.0
+PackageVersion: 0.5.0
 DefaultLocale: en-US
 ManifestType: version
 ManifestVersion: 1.6.0
