@@ -76,13 +76,23 @@ mURL is that name, plus the machinery that makes it safe:
 ## Quick start
 
 ```bash
-git clone <this-repo> && cd mURL
-cargo build
+brew tap thatwasyahya/murl && brew install murl     # or: see docs/install.md
+```
 
-# the full guided tour (hermetic — temp state, dry-run open, auto-cleanup):
-bash examples/demo.sh
-# and the daemon path, including its fail-closed behavior:
-bash examples/daemon-demo.sh
+Or from source:
+
+```bash
+git clone https://github.com/thatwasyahya/mURL && cd mURL
+cargo install --path crates/murl-cli
+cargo install --path crates/murl-daemon   # the consent dialog; required on macOS
+```
+
+Either way, `murl` is now on your PATH. The guided tours run from a checkout
+and need no install at all — they use the build in `target/`:
+
+```bash
+bash examples/demo.sh          # hermetic: temp state, dry-run open, auto-cleanup
+bash examples/daemon-demo.sh   # the daemon path, including fail-closed consent
 ```
 
 Or by hand:
@@ -93,7 +103,7 @@ murl validate project-x.murl.json
 murl name add project-x project-x.murl.json   # install as murl://local/project-x
 murl resolve murl://local/project-x           # see the full plan — nothing opens
 murl open murl://local/project-x              # consent, then dispatch
-murl open 'murl://local/project-x#monitoring' # just one part of it
+murl open 'murl://local/project-x#docs'       # just one part of it
 
 murl keygen && murl sign project-x.murl.json  # sign it
 murl export murl://local/project-x            # bundle it, nested manifests and all
@@ -122,6 +132,7 @@ A manifest looks like this (full schema: [spec §5](spec/SPECIFICATION.md)):
 
 | | |
 |---|---|
+| [docs/install.md](docs/install.md) | every way to install it, and which channels are actually published |
 | [docs/concept.md](docs/concept.md) | why mURL exists; what it is and is not |
 | [spec/SPECIFICATION.md](spec/SPECIFICATION.md) | **the normative v0.1 specification** |
 | [docs/architecture.md](docs/architecture.md) | crate layout, pipeline, decisions & reasons |

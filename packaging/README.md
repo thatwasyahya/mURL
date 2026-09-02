@@ -40,7 +40,7 @@ Two asymmetries are deliberate and worth knowing before you edit anything:
 
 ### Everywhere: the version
 
-These files hardcode `0.4.0` / `v0.4.0` in URLs, `extract_dir`, and the
+These files hardcode `0.5.0` / `v0.4.0` in URLs, `extract_dir`, and the
 winget `RelativeFilePath`. Bumping a release means bumping it in:
 
 `homebrew/murl.rb` (`version`, four URLs) · `scoop/murl.json` (`version`,
@@ -150,7 +150,7 @@ description) that have not been made:
 ```yaml
 # thatwasyahya.murl.locale.en-US.yaml
 PackageIdentifier: thatwasyahya.murl
-PackageVersion: 0.4.0
+PackageVersion: 0.5.0
 PackageLocale: en-US
 Publisher: FILL IN
 PublisherUrl: https://github.com/thatwasyahya
@@ -183,7 +183,7 @@ Then:
 2. `winget validate --manifest packaging\winget` and
    `winget install --manifest packaging\winget` on a real Windows machine.
 3. Open a PR to `microsoft/winget-pkgs` adding all three files under
-   `manifests/t/thatwasyahya/murl/0.4.0/`. Their review is a human one and
+   `manifests/t/thatwasyahya/murl/0.5.0/`. Their review is a human one and
    will ask about the publisher identity — a private repository is unlikely
    to be accepted, so this is blocked on the repository going public anyway.
 
