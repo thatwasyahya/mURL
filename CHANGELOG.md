@@ -6,6 +6,87 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-08-29
+
+The release where consent got a real surface, the format got a second
+implementation, and CI ran for the first time.
+
+### Added
+
+* **Native consent dialog** (`murl-daemon`), built on the helper each desktop
+  already ships — `zenity`, `kdialog`, or `osascript` — rather than a toolkit
+  dependency. The daemon picks the best surface available and says which one:
+  dialog, then terminal, then denial, a chain that only ever gets stricter.
+  This is also what makes macOS usable: a Launch Services activation has no
+  controlling terminal, so consent there could previously only refuse.
+  * The AppleScript source is a **constant** and the plan travels in `argv`;
+    interpolating a target into script text would be the same mistake as
+    building a shell command, one language over.
+  * The dialog returns **resource ids and nothing else**, and anything
+    returned that was not offered is discarded — a backend cannot grant what
+    policy denied. A test drives a rogue backend to prove it.
+  * Every failure is a denial: no backend, crash, cancel, closed window,
+    unparseable output, or no answer within 180 s.
+* **`murl-daemon service install|uninstall|status`** — a systemd *user* unit
+  or a LaunchAgent, never a system unit or a LaunchDaemon. The daemon holds
+  no capability the user lacks; installing it system-wide would grant it one.
+* **A second implementation**: `reference/python/`, the v0.2 format in
+  pure-stdlib Python, written from the specification. It passes every
+  conformance vector.
+* **Canonical-form conformance vectors** (`spec/conformance/canonical/`) and
+  a fifth conformance rule. See "Fixed" — their absence was a real hole.
+* **Distribution**: Homebrew, Scoop, AUR, Nix and winget manifests, plus
+  `docs/install.md`; a static documentation site (`docs/site/`) with a Pages
+  workflow; `RELEASING.md`; and `.github/seed-issues.sh`.
+* **Benchmarks** (`cargo run --release -p murl-core --example bench`): a
+  maximum-legal 64-resource manifest validates in ~82 µs and an ed25519
+  verification costs ~56 µs, against a network fetch measured in
+  milliseconds. The limits in spec §6.6 bound hostile input; they are not
+  compensating for slow parsing.
+
+### Fixed
+
+* **The conformance suite never tested the canonical form.** It covered the
+  grammar and the schema and skipped the one artifact that must agree
+  byte-for-byte for signatures to interoperate. A second implementation
+  could pass all 137 vectors with a silently wrong canonical form — this one
+  nearly did. Both implementations are now verified byte-identical.
+* **Specification §7.1** left three things unsaid, each of which produces
+  signatures nobody else can verify: the hex case in `\u00xx` escapes (it is
+  lowercase), whether U+007F is escaped (it is not), and the number rules
+  beyond "integers". The claim that MCF-1 is byte-identical to RFC 8785 was
+  **overstated** and is corrected: JCS sorts by UTF-16 code unit, MCF-1 by
+  code point, and they disagree on documents the schema permits.
+* Three more spec gaps: the grammar admitted `local:80` while the parser
+  rejected it, `qchar` was used and never defined, and a vector in
+  `manifests/valid/` contradicted the §7.2 `keyId` MUST.
+* `AggregateStatus::Partial` serialized as `PARTIAL` while the specification
+  and `Display` both said `PARTIAL_SUCCESS`, so a consumer matching the
+  documented string reported failure for a partially successful activation.
+* **Platform defects CI caught the moment it could run**: macOS tests stubbed
+  the opener with `/bin/true`, which lives in `/usr/bin` there; Windows could
+  not execute the `#!/bin/sh` dialog stubs, so the id-mapping rules went
+  untested on the platform whose OS handler is most exposed (they are now a
+  pure function tested everywhere); and a test hand-formatted a Windows path
+  into JSON, where backslashes are escapes.
+
+### Changed
+
+* **MSRV is now 1.88**, measured rather than claimed: 1.88 builds the
+  workspace and 1.85 does not. The floor comes entirely from
+  `ureq → url → idna → icu_*`. `murl-core` — the crate an embedder or a
+  second implementation depends on — pulls none of that chain.
+  `RELEASING.md` records the two ways to lower it and why neither was taken.
+
+### Note
+
+CI had never executed a single step before this release. Nine jobs were
+created and killed in seconds each, with no logs, because a private
+repository has no Actions minutes on this account — which reads exactly like
+a broken workflow and is not one. Making the repository public fixed it, and
+the first real run found five genuine defects, all fixed above.
+
+
 ## [0.4.0] — 2026-08-28
 
 Three roadmap milestones (v0.3 daemon, v0.4 platform completeness, v1.0
