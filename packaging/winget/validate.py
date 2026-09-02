@@ -14,7 +14,7 @@ import jsonschema
 import yaml
 
 ROOT = os.path.dirname(os.path.abspath(__file__)) + "/"
-VERSION = "1.6.0"
+VERSION = "1.12.0"
 BASE = f"https://raw.githubusercontent.com/microsoft/winget-cli/master/schemas/JSON/manifests/v{VERSION}/"
 
 FILES = {
