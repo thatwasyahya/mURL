@@ -10,6 +10,18 @@ They live in the repository rather than only in the tap/bucket/AUR repos so
 that a release can be prepared in one place, reviewed like the rest of the
 code, and diffed against what was published.
 
+## Status, 2026-09-02
+
+* **crates.io** — published: `murl-core`, `murl-net`, `murl-daemon`,
+  `murl-cli`, all 0.5.0.
+* **Homebrew** — published at
+  [thatwasyahya/homebrew-murl](https://github.com/thatwasyahya/homebrew-murl);
+  the formula there is a copy of `homebrew/murl.rb`, so edit this one.
+* **AUR** — blocked upstream, not by anything here: new account registration
+  is paused while Arch deals with a wave of automated signups. The PKGBUILD
+  is finished and waiting.
+* **Scoop, winget, Nix** — manifests written, nothing submitted.
+
 ## What is here
 
 | Path | Channel | Ships | Source |

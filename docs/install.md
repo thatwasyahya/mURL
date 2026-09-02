@@ -27,7 +27,9 @@ worse than a short one:
 | build from source | **works** |
 | prebuilt release archives | **works** for three targets (see below) |
 | Homebrew | **published** — `brew tap thatwasyahya/murl && brew install murl` ([tap](https://github.com/thatwasyahya/homebrew-murl)) |
-| Scoop · AUR · Nix · winget | **manifests written, not yet published** — [packaging/](../packaging/) has them and what remains to be done |
+| crates.io | **published** — `cargo install murl-cli` (and `murl-daemon`) |
+| Scoop · Nix · winget | **manifests written, not yet published** — [packaging/](../packaging/) has them and what remains to be done |
+| AUR | **blocked upstream** — new AUR account registration is paused while Arch deals with automated signups; the PKGBUILD is ready in [packaging/aur/](../packaging/aur/) |
 
 ## cargo install from git
 
@@ -139,6 +141,18 @@ None of these are live yet. The manifests exist and are reviewable in
 [packaging/](../packaging/), together with a list of exactly what a human has
 to fill in before publishing (hashes, tap repository, winget PR). The
 commands below are what they will be, not what works now.
+
+### crates.io (any platform with a Rust toolchain)
+
+```bash
+cargo install murl-cli       # the `murl` binary
+cargo install murl-daemon    # the consent dialog; required on macOS
+```
+
+`murl-core` is published too, for anyone embedding the format: it is the
+parser, manifest model, validator, resolver, policy and trust engines, with
+no network and no process launching (those are traits the embedder
+implements).
 
 ### Homebrew (macOS, Linux)
 

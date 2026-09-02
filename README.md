@@ -76,8 +76,11 @@ mURL is that name, plus the machinery that makes it safe:
 ## Quick start
 
 ```bash
-brew tap thatwasyahya/murl && brew install murl     # or: see docs/install.md
+brew tap thatwasyahya/murl && brew install murl   # macOS, Linux
+cargo install murl-cli murl-daemon                # anywhere with Rust
 ```
+
+Other options: [docs/install.md](docs/install.md).
 
 Or from source:
 
