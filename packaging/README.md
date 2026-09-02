@@ -20,7 +20,15 @@ code, and diffed against what was published.
 * **AUR** — blocked upstream, not by anything here: new account registration
   is paused while Arch deals with a wave of automated signups. The PKGBUILD
   is finished and waiting.
-* **Scoop, winget, Nix** — manifests written, nothing submitted.
+* **Scoop** - published at
+  [thatwasyahya/scoop-murl](https://github.com/thatwasyahya/scoop-murl):
+  `scoop bucket add murl https://github.com/thatwasyahya/scoop-murl`.
+* **winget** - manifests validated against the v1.6.0 schemas by
+  `packaging/winget/validate.py` and pushed to the `murl-0.5.0` branch of
+  the winget-pkgs fork. Opening the pull request needs a token with
+  permission on third-party repositories, so it is the one remaining manual
+  step: https://github.com/microsoft/winget-pkgs/compare/master...thatwasyahya:winget-pkgs:murl-0.5.0?expand=1
+* **Nix** - flake written, not submitted to nixpkgs.
 
 ## What is here
 

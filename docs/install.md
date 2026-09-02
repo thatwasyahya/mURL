@@ -28,7 +28,9 @@ worse than a short one:
 | prebuilt release archives | **works** for three targets (see below) |
 | Homebrew | **published** — `brew tap thatwasyahya/murl && brew install murl` ([tap](https://github.com/thatwasyahya/homebrew-murl)) |
 | crates.io | **published** — `cargo install murl-cli` (and `murl-daemon`) |
-| Scoop · Nix · winget | **manifests written, not yet published** — [packaging/](../packaging/) has them and what remains to be done |
+| Scoop | **published** — `scoop bucket add murl https://github.com/thatwasyahya/scoop-murl && scoop install murl` |
+| winget | **submitted** — manifests validated and pushed; the pull request is the last manual step |
+| Nix | **flake written, not submitted** — [packaging/nix/](../packaging/nix/) |
 | AUR | **blocked upstream** — new AUR account registration is paused while Arch deals with automated signups; the PKGBUILD is ready in [packaging/aur/](../packaging/aur/) |
 
 ## cargo install from git
