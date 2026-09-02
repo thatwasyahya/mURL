@@ -26,7 +26,7 @@
     "architecture": {
         "64bit": {
             "url": "https://github.com/thatwasyahya/mURL/releases/download/v0.5.0/murl-v0.5.0-x86_64-pc-windows-msvc.zip",
-            "hash": "f4337511f69c1ad17efc3f7acbc270d15e31b8a31fac118a4ee5050cd92b1a62",
+            "hash": "4d626ccbbd79614185035c9bede7e2bb62c8165999b53d1eb2530f6a527d0d9b",
             "extract_dir": "murl-v0.5.0-x86_64-pc-windows-msvc"
         }
     },

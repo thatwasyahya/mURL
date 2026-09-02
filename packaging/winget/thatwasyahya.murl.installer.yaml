@@ -33,6 +33,6 @@ ReleaseDate: 2026-08-28
 Installers:
   - Architecture: x64
     InstallerUrl: https://github.com/thatwasyahya/mURL/releases/download/v0.5.0/murl-v0.5.0-x86_64-pc-windows-msvc.zip
-    InstallerSha256: F4337511F69C1AD17EFC3F7ACBC270D15E31B8A31FAC118A4EE5050CD92B1A62
+    InstallerSha256: 4D626CCBBD79614185035C9BEDE7E2BB62C8165999B53D1EB2530F6A527D0D9B
 ManifestType: installer
 ManifestVersion: 1.6.0
