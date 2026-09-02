@@ -1,0 +1,25 @@
+{
+  "id": "murl://local/conformance/signed",
+  "murlVersion": "0.2",
+  "name": "Reordered on disk",
+  "resources": [
+    {
+      "id": "docs",
+      "kind": "https",
+      "role": "docs",
+      "target": "https://docs.example/x"
+    },
+    {
+      "id": "workspace",
+      "kind": "dir",
+      "order": 20,
+      "target": "~/projects/x"
+    }
+  ],
+  "signature": {
+    "alg": "ed25519",
+    "keyId": "ed25519:f0acc712af006a5f",
+    "publicKey": "Y9am5caBc6LQSzZDWiSqgOSQ167uxXB8ZTVYYpTCTdw=",
+    "sig": "tphOpiehqN06Gjui+H78nxG5cPehHxE39JIYimKdYhSu6gMjgN3+Ykysq/VWzJzcu5ZV+fiYsRx0NwhxmdwfBQ=="
+  }
+}

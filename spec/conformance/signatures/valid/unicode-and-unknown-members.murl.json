@@ -1,0 +1,36 @@
+{
+  "description": "A manifest whose signature must verify in any implementation.",
+  "futureExtension": {
+    "count": 7,
+    "unknownToThisVersion": true
+  },
+  "id": "murl://local/conformance/signed",
+  "murlVersion": "0.2",
+  "name": "Signé · 日本語 · 😀",
+  "resources": [
+    {
+      "id": "docs",
+      "kind": "https",
+      "role": "docs",
+      "target": "https://docs.example/x"
+    },
+    {
+      "id": "workspace",
+      "kind": "dir",
+      "order": 20,
+      "target": "~/projects/x"
+    },
+    {
+      "id": "unicode",
+      "kind": "https",
+      "label": "café",
+      "target": "https://e.example/caf%C3%A9"
+    }
+  ],
+  "signature": {
+    "alg": "ed25519",
+    "keyId": "ed25519:f0acc712af006a5f",
+    "publicKey": "Y9am5caBc6LQSzZDWiSqgOSQ167uxXB8ZTVYYpTCTdw=",
+    "sig": "QX0yk5pFeVEr9ZScD1Dre0EdoTZS0pXMYfKscOXcVg9+sY7JuUG0jWOkfqNchReTcyVVamr9UvZHXNFadJ3bAA=="
+  }
+}

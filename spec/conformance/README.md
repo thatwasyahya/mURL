@@ -18,6 +18,8 @@ manifests/invalid/*.murl.json   must fail parsing, OR produce >=1 error
 murls/valid.txt                 one mURL per line; each must parse
 murls/invalid.txt               one mURL per line; each must be rejected
 canonical/<name>.input.json     canonicalizes to exactly <name>.expected
+signatures/valid/*.murl.json    signature verifies against its own publicKey
+signatures/invalid/*.murl.json  signature must NOT verify
 ```
 
 Filenames name the feature (valid) or the violated rule (invalid) — a failing
@@ -39,6 +41,25 @@ vector tells you what broke without opening it.
 5. **Canonical form**: each `canonical/<name>.input.json` must canonicalize
    (spec §7.1) to the **exact bytes** of `canonical/<name>.expected` — no
    trailing newline, no whitespace, member order and escaping as specified.
+
+6. **Signatures** *(optional — only for implementations that verify them)*:
+   every manifest in `signatures/valid/` must verify, and every one in
+   `signatures/invalid/` must not. The signing key is fixed and its seed is
+   published in the generator, because these vectors exist to be verified,
+   not to protect anything.
+
+   Rule 6 is where MCF-1 stops being a formatting exercise. Two
+   implementations agree on the canonical form only if they also agree on
+   *which bytes get signed* — the document with `signature` removed — and
+   nothing in rules 1–5 forces that. `valid/unicode-and-unknown-members`
+   is deliberately hostile to the common shortcut: an implementation that
+   re-serializes its own typed view before verifying will drop the unknown
+   member and fail.
+
+   A format-only implementation may skip this rule and say so. The Python
+   reference implementation skips it: ed25519 is not in the standard
+   library, and adding a dependency would defeat the point of that
+   implementation being dependency-free.
 
 Rule 5 was added after a second implementation passed rules 1–4 with an
 untested canonical form. Signatures are the one place where "close enough"

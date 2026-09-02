@@ -9,6 +9,7 @@
 use std::path::{Path, PathBuf};
 
 use murl_core::canonical::canonical_json_bytes;
+use murl_core::Limits;
 
 fn vector_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/conformance/canonical")
@@ -75,4 +76,66 @@ fn canonicalization_is_a_fixpoint_on_every_vector() {
             "`{name}` is not a fixpoint"
         );
     }
+}
+
+/// Rule 6: signature vectors from `spec/conformance/signatures/`.
+///
+/// The suite checked the *shape* of a signature block and never checked
+/// whether one verifies. That left the most interop-critical thing in the
+/// format untested: two implementations agree on MCF-1 only if they also
+/// agree on which bytes get signed, and nothing forced that agreement.
+///
+/// The key is fixed and its seed is published in the generator on purpose.
+/// These vectors exist to be verified, not to protect anything.
+#[test]
+fn signature_vectors_verify_and_fail_as_specified() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/conformance/signatures");
+
+    let mut verified = 0;
+    for entry in std::fs::read_dir(dir.join("valid")).expect("valid/ exists") {
+        let path = entry.unwrap().path();
+        if !path.to_string_lossy().ends_with(".murl.json") {
+            continue;
+        }
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        let bytes = std::fs::read(&path).unwrap();
+        let manifest = murl_core::manifest::Manifest::from_slice(&bytes, &Limits::default())
+            .unwrap_or_else(|e| panic!("`{name}` does not parse: {e}"));
+        match murl_core::trust::verify_manifest(&manifest.raw) {
+            Ok(Some(_)) => verified += 1,
+            other => panic!("`{name}` should verify, got {other:?}"),
+        }
+    }
+    assert!(
+        verified >= 3,
+        "expected >=3 valid signature vectors, found {verified}"
+    );
+
+    let mut rejected = 0;
+    for entry in std::fs::read_dir(dir.join("invalid")).expect("invalid/ exists") {
+        let path = entry.unwrap().path();
+        if !path.to_string_lossy().ends_with(".murl.json") {
+            continue;
+        }
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        let bytes = std::fs::read(&path).unwrap();
+        // Rejection may happen at parse, at validation, or at verification;
+        // any of the three is a refusal, and none of them may be silent.
+        let outcome = murl_core::manifest::Manifest::from_slice(&bytes, &Limits::default())
+            .map_err(|e| e.to_string())
+            .and_then(|m| {
+                murl_core::trust::verify_manifest(&m.raw)
+                    .map_err(|e| e.to_string())
+                    .and_then(|v| match v {
+                        Some(_) => Ok(()),
+                        None => Err("no signature".to_string()),
+                    })
+            });
+        assert!(outcome.is_err(), "`{name}` must not verify, but it did");
+        rejected += 1;
+    }
+    assert!(
+        rejected >= 8,
+        "expected >=8 invalid signature vectors, found {rejected}"
+    );
 }

@@ -1,0 +1,26 @@
+{
+  "description": "A manifest whose signature must verify in any implementation.",
+  "id": "murl://local/conformance/signed",
+  "murlVersion": "0.2",
+  "name": "Signed destination",
+  "resources": [
+    {
+      "id": "docs",
+      "kind": "https",
+      "role": "docs",
+      "target": "https://docs.example/x"
+    },
+    {
+      "id": "workspace",
+      "kind": "dir",
+      "order": 20,
+      "target": "~/projects/x"
+    }
+  ],
+  "signature": {
+    "alg": "ed25519",
+    "keyId": "ed25519:0123456789abcdef",
+    "publicKey": "Y9am5caBc6LQSzZDWiSqgOSQ167uxXB8ZTVYYpTCTdw=",
+    "sig": "atkP0Ym1VfkOkQyzewsEnfBQhVSovnRCngS7vnCPiJ8OKHrtMfuzugpf+dK9CP8TCih0iLeZCACPhwerQiIrBg=="
+  }
+}
