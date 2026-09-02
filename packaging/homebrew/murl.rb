@@ -37,13 +37,13 @@ class Murl < Formula
   on_macos do
     on_arm do
       url "https://github.com/thatwasyahya/mURL/releases/download/v0.5.0/murl-v0.5.0-aarch64-apple-darwin.tar.gz"
-      sha256 "d8a707df6746df519ff5ecd572348a36b036427b7262a8fa3badd7b900f57b29" # aarch64-apple-darwin
+      sha256 "88fce178812b7a5506b534f8d0f443ecfe09207830f5678afc38fdc180b8e8de" # aarch64-apple-darwin
     end
 
     on_intel do
       # No x86_64-apple-darwin archive is published; build from source.
       url "https://github.com/thatwasyahya/mURL/archive/refs/tags/v0.5.0.tar.gz"
-      sha256 "e8b8b903b811e701be201b00a3aaf2a9f7adab426deeb8b95744a349857c2420" # source tarball
+      sha256 "cfb0e08e6e8496b9c9bacf84e0881dd07d525fee26f6861917ab8cf00f21638b" # source tarball
       depends_on "rust" => :build
     end
   end
@@ -51,13 +51,13 @@ class Murl < Formula
   on_linux do
     on_intel do
       url "https://github.com/thatwasyahya/mURL/releases/download/v0.5.0/murl-v0.5.0-x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "0663e191eb13232d15194b09abb55c44a585e759468268a3d044c45dcf4bdada" # x86_64-unknown-linux-gnu
+      sha256 "886f20a42e05b2728badeaebd716743ecfa47e5f0e583799359576fe527a0607" # x86_64-unknown-linux-gnu
     end
 
     on_arm do
       # No aarch64-unknown-linux-gnu archive is published; build from source.
       url "https://github.com/thatwasyahya/mURL/archive/refs/tags/v0.5.0.tar.gz"
-      sha256 "e8b8b903b811e701be201b00a3aaf2a9f7adab426deeb8b95744a349857c2420" # source tarball
+      sha256 "cfb0e08e6e8496b9c9bacf84e0881dd07d525fee26f6861917ab8cf00f21638b" # source tarball
       depends_on "rust" => :build
     end
   end
