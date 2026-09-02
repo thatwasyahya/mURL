@@ -45,6 +45,10 @@ each part to the right handler:
    SAFE       SAFE       SAFE        SAFE     SENSITIVE   DANGEROUS
 ```
 
+<p align="center">
+  <img src="docs/assets/demo.svg" alt="murl resolve showing a destination resolved into eight resources, each tagged SAFE, SENSITIVE or DANGEROUS" width="800">
+</p>
+
 ## Why this exists
 
 The unit of human intent is a *destination* — "working on Project X",
