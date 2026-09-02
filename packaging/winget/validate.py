@@ -13,6 +13,23 @@ import urllib.request
 import jsonschema
 import yaml
 
+
+class StringDateLoader(yaml.SafeLoader):
+    """Leave YAML timestamps as strings, the way winget reads them.
+
+    winget manifests write `ReleaseDate` unquoted, as every merged manifest
+    does. PyYAML resolves that to a `datetime.date`, which then fails a
+    schema saying "string" — a false positive produced by this checker, not
+    by the manifest. Removing the timestamp resolver aligns the two.
+    """
+
+
+StringDateLoader.yaml_implicit_resolvers = {
+    key: [(tag, regexp) for tag, regexp in resolvers
+          if tag != "tag:yaml.org,2002:timestamp"]
+    for key, resolvers in StringDateLoader.yaml_implicit_resolvers.items()
+}
+
 ROOT = os.path.dirname(os.path.abspath(__file__)) + "/"
 VERSION = "1.12.0"
 BASE = f"https://raw.githubusercontent.com/microsoft/winget-cli/master/schemas/JSON/manifests/v{VERSION}/"
@@ -34,7 +51,7 @@ for filename, schema_name in FILES.items():
         failures += 1
         continue
 
-    doc = yaml.safe_load(io.open(ROOT + filename, encoding="utf-8").read())
+    doc = yaml.load(io.open(ROOT + filename, encoding="utf-8").read(), StringDateLoader)
     validator = jsonschema.Draft7Validator(schema)
     errors = sorted(validator.iter_errors(doc), key=lambda e: list(e.path))
     if errors:
@@ -48,7 +65,7 @@ for filename, schema_name in FILES.items():
 
 # Cross-file consistency: winget requires identifier and version to match.
 docs = {
-    name: yaml.safe_load(io.open(ROOT + name, encoding="utf-8").read())
+    name: yaml.load(io.open(ROOT + name, encoding="utf-8").read(), StringDateLoader)
     for name in FILES
 }
 ids = {d["PackageIdentifier"] for d in docs.values()}
