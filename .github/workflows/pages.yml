@@ -4,8 +4,9 @@
 # Settings → Pages → "Build and deployment" → Source: **GitHub Actions**.
 # Until that is done this workflow fails at the deploy step with a 404 —
 # the API refuses to create a deployment for a repository with Pages off.
-# Note also that Pages on a private repository requires a plan that allows
-# it; this repository is currently private.
+# Pages on a private repository requires a plan that allows it; this
+# repository is public, so it is served free at
+# https://thatwasyahya.github.io/mURL/
 #
 # The site has no build step on purpose: it is static HTML plus one
 # stylesheet, so "build" is just uploading the directory as-is.

@@ -2,6 +2,17 @@
 
 **One identifier that opens a whole working context.**
 
+[![CI](https://github.com/thatwasyahya/mURL/actions/workflows/ci.yml/badge.svg)](https://github.com/thatwasyahya/mURL/actions/workflows/ci.yml)
+[![docs](https://img.shields.io/badge/docs-thatwasyahya.github.io%2FmURL-0e7a5f)](https://thatwasyahya.github.io/mURL/)
+[![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](LICENSE-MIT)
+[![conformance](https://img.shields.io/badge/conformance-153%20vectors%20%C2%B7%202%20implementations-0e7a5f)](spec/conformance/)
+
+```bash
+brew tap thatwasyahya/murl && brew install murl    # macOS, Linux
+```
+
+Other platforms and package managers: [docs/install.md](docs/install.md).
+
 > Status: **experimental** (format v0.2). A working reference implementation
 > of a proposed primitive, not a standard. Interfaces and the format itself
 > may still change; see [docs/stability.md](docs/stability.md) for what

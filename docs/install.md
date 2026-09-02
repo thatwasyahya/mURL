@@ -26,10 +26,8 @@ worse than a short one:
 | `cargo install` from git | **works** |
 | build from source | **works** |
 | prebuilt release archives | **works** for three targets (see below) |
-| Homebrew · Scoop · AUR · Nix · winget | **manifests written, nothing published** — [packaging/](../packaging/) has them and what must be filled in |
-
-The repository is also still private, so every command below that fetches
-from GitHub needs credentials that can read it.
+| Homebrew | **published** — `brew tap thatwasyahya/murl && brew install murl` ([tap](https://github.com/thatwasyahya/homebrew-murl)) |
+| Scoop · AUR · Nix · winget | **manifests written, not yet published** — [packaging/](../packaging/) has them and what remains to be done |
 
 ## cargo install from git
 
@@ -147,6 +145,14 @@ commands below are what they will be, not what works now.
 ```bash
 brew tap thatwasyahya/murl
 brew install murl
+```
+
+Installs both `murl` and `murl-daemon`. On macOS the daemon is not optional:
+a Launch Services activation has no controlling terminal, so without it
+consent can only refuse. Start it with:
+
+```bash
+murl-daemon service install    # then follow the printed launchctl line
 ```
 
 Prebuilt on Apple silicon and x86_64 Linux; builds from source on Intel macOS
