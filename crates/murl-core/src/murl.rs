@@ -56,6 +56,11 @@ pub const LOCAL_AUTHORITY: &str = "local";
 pub enum MurlParseError {
     #[error("mURL exceeds maximum length of {MAX_MURL_LEN} bytes")]
     TooLong,
+    #[error(
+        "mURL is {0} bytes in canonical form, over the {MAX_MURL_LEN}-byte maximum \
+         (percent-encoding expands characters outside the unreserved set)"
+    )]
+    CanonicalTooLong(usize),
     #[error("mURL contains a non-printable or non-ASCII byte at offset {0}; non-ASCII must be percent-encoded")]
     InvalidCharacter(usize),
     #[error("mURL must start with the scheme `murl://`")]
@@ -317,13 +322,26 @@ impl Murl {
             }
         }
 
-        Ok(Murl {
+        let murl = Murl {
             authority,
             name: segments,
             version,
             selector,
             query: query.map(str::to_owned),
-        })
+        };
+
+        // The canonical form must itself be parseable. Characters legal in a
+        // segment but outside the unreserved set cost one byte here and three
+        // there, so an input under the limit can canonicalize over it - and
+        // `identity()` is the cache key, the cycle-detection key, and what
+        // §6.4 compares. An identity the parser would reject is a broken
+        // invariant, not a cosmetic one.
+        let canonical_len = murl.to_string().len();
+        if canonical_len > MAX_MURL_LEN {
+            return Err(MurlParseError::CanonicalTooLong(canonical_len));
+        }
+
+        Ok(murl)
     }
 
     /// The canonical resolution identity of this mURL: authority + name +
@@ -678,6 +696,52 @@ mod tests {
         let a = Murl::parse("murl://local/x").unwrap();
         let b = Murl::parse("murl://local/x@latest").unwrap();
         assert_eq!(a.identity(), b.identity());
+    }
+
+    /// Found by fuzzing: legal-but-not-unreserved characters expand 3x in
+    /// the canonical form, so a short input could canonicalize past the
+    /// limit and produce an identity the parser rejects.
+    #[test]
+    fn rejects_input_whose_canonical_form_would_be_too_long() {
+        let segment = "(".repeat(MAX_SEGMENT_BYTES);
+        let segments: Vec<String> = (0..MAX_SEGMENTS).map(|_| segment.clone()).collect();
+        let input = format!("murl://example.com/{}", segments.join("/"));
+        assert!(
+            input.len() <= MAX_MURL_LEN,
+            "the input itself is within the limit"
+        );
+        assert!(matches!(
+            Murl::parse(&input),
+            Err(MurlParseError::CanonicalTooLong(_))
+        ));
+    }
+
+    /// The invariant the fix exists to protect: whatever parses has an
+    /// identity and a canonical form that parse too.
+    #[test]
+    fn every_accepted_murl_has_a_parseable_identity() {
+        let cases = [
+            "murl://local/x",
+            "murl://example.com/a/b/c@1.2.3#docs,role=ops",
+            "murl://local/caf%C3%A9",
+            &format!("murl://example.com/{}", "(".repeat(60)),
+            &format!("murl://example.com/{}", "%C3%A9".repeat(60)),
+        ];
+        for case in cases {
+            let Ok(parsed) = Murl::parse(case) else {
+                continue;
+            };
+            let identity = parsed.identity();
+            assert!(
+                Murl::parse(&identity).is_ok(),
+                "identity `{identity}` of `{case}` does not parse"
+            );
+            let canonical = parsed.to_string();
+            assert!(
+                Murl::parse(&canonical).is_ok(),
+                "canonical form `{canonical}` of `{case}` does not parse"
+            );
+        }
     }
 
     #[test]

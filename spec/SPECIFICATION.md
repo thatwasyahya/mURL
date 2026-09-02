@@ -91,7 +91,7 @@ field grammars they select against (§5.2–5.3) — one definition, shared.
 
 | Constraint | Value | Rationale |
 |---|---|---|
-| Total length | ≤ 1024 bytes | resource-exhaustion bound |
+| Total length | ≤ 1024 bytes, **for the canonical form as well as the input** | resource-exhaustion bound. Percent-encoding expands characters outside the unreserved set threefold, so an input within the limit can canonicalize past it; since the identity (§3.3) is the cache key, the cycle-detection key and the subject of §6.4 binding, an identity the parser would reject is a broken invariant |
 | Character set | printable ASCII (0x21–0x7E) | non-ASCII must be percent-encoded UTF-8; removes homoglyph attacks from the raw identifier |
 | Userinfo | **forbidden** | `murl://github.com@evil.example/x` must be a parse error, not a phishing vector |
 | IPv6 literals | not supported in v0.1 | keeps the authority grammar auditable; IPv4 dotted-quads parse as reg-names |
