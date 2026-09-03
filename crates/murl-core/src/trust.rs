@@ -96,6 +96,10 @@ struct KeyFile {
 }
 
 impl Keypair {
+    /// Requires the `keygen` feature (on by default). It is separable
+    /// because generating a key is the only thing here that needs entropy,
+    /// and some targets — wasm among them — have no free answer for that.
+    #[cfg(feature = "keygen")]
     pub fn generate() -> Result<Keypair> {
         let mut seed = [0u8; 32];
         getrandom::getrandom(&mut seed)

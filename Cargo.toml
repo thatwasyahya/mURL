@@ -5,6 +5,7 @@ members = [
     "crates/murl-net",
     "crates/murl-daemon",
     "crates/murl-cli",
+    "crates/murl-wasm",
 ]
 exclude = ["fuzz"]
 

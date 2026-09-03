@@ -14,3 +14,4 @@ Cargo.lock.orig
 !/fuzz/corpus/*/seed-*
 .idea/
 .vscode/
+docs/site/murl.wasm

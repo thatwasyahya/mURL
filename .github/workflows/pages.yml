@@ -94,6 +94,17 @@ jobs:
           echo "docs/site: links resolve, tags balance"
 
       - uses: actions/configure-pages@v5
+      - name: build the playground's wasm module
+        # The playground validates with murl-core itself, so the module is
+        # built here rather than committed: a checked-in binary would go
+        # stale the moment the core changed, which is precisely the drift
+        # calling murl-core was meant to avoid.
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo build -p murl-wasm --target wasm32-unknown-unknown --release
+          cp target/wasm32-unknown-unknown/release/murl_wasm.wasm docs/site/murl.wasm
+          node crates/murl-wasm/tests/smoke.mjs docs/site/murl.wasm
+
 
       - uses: actions/upload-pages-artifact@v3
         with:

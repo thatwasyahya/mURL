@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mURL playground — build a destination from a list of resources</title>
+<meta name="description" content="Paste the resources that make up a working context and get a validated mURL manifest, checked in your browser by the reference implementation compiled to WebAssembly.">
+<link rel="stylesheet" href="style.css">
+<style>
+  .pg-grid { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
+  @media (min-width: 62rem) { .pg-grid { grid-template-columns: 1fr 1fr; } }
+  .field { display: flex; flex-direction: column; gap: .3rem; margin-bottom: .9rem; }
+  .field label { font-size: .8rem; font-weight: 600; letter-spacing: .02em; }
+  .field .note { font-size: .78rem; color: var(--fg-muted); font-weight: 400; }
+  input[type=text], textarea {
+    font: inherit; padding: .55rem .65rem; border-radius: 6px;
+    border: 1px solid var(--rule); background: var(--bg); color: var(--fg);
+  }
+  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .86rem; line-height: 1.5; resize: vertical; }
+  input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .two { display: grid; gap: .9rem; grid-template-columns: 1fr 1fr; }
+  .btn {
+    font: inherit; font-size: .85rem; cursor: pointer; padding: .4rem .8rem;
+    border-radius: 6px; border: 1px solid var(--rule); background: var(--bg-sunk); color: var(--fg);
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.hidden { display: none; }
+  .panel { border: 1px solid var(--rule); border-radius: 8px; padding: 1rem 1.1rem; margin-bottom: 1.1rem; }
+  .panel h3 { margin: 0 0 .1rem; font-size: .95rem; }
+  .panel .sub { font-size: .8rem; color: var(--fg-muted); margin: 0 0 .7rem; }
+  .panel .head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  table.parsed { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  table.parsed th {
+    text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--fg-muted); border-bottom: 1px solid var(--rule); padding: .3rem .5rem .3rem 0;
+  }
+  table.parsed td { border-bottom: 1px solid var(--rule); padding: .4rem .5rem .4rem 0; vertical-align: top; }
+  table.parsed .target { color: var(--fg-muted); word-break: break-all; }
+  .kind {
+    font-size: .7rem; text-transform: uppercase; letter-spacing: .05em;
+    border: 1px solid var(--rule); border-radius: 4px; padding: .05em .35em; margin-right: .35rem;
+  }
+  .tier { font-size: .7rem; font-weight: 600; letter-spacing: .04em; border-radius: 4px; padding: .1em .45em; white-space: nowrap; }
+  .tier.safe { color: var(--safe); background: var(--safe-bg); }
+  .tier.sensitive { color: var(--sensitive); background: var(--sensitive-bg); }
+  .tier.dangerous { color: var(--danger); background: var(--danger-bg); }
+  .row-bad code { color: var(--danger); }
+  .row-bad .why { color: var(--fg-muted); font-size: .8rem; }
+  .problems { list-style: none; margin: .8rem 0 0; padding: 0; font-size: .84rem; }
+  .problems li { padding: .35rem 0 .35rem .8rem; border-left: 3px solid var(--rule); margin-bottom: .3rem; }
+  .problems .err { border-left-color: var(--danger); }
+  .problems .warn { border-left-color: var(--sensitive); }
+  .hint { color: var(--fg-muted); font-size: .85rem; margin: 0; }
+  #engine { font-size: .78rem; color: var(--fg-muted); }
+  #engine.bad { color: var(--danger); }
+  pre.out { margin: 0; max-height: 22rem; overflow: auto; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="index.html">murl://</a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="playground.html" aria-current="page">Playground</a>
+      <a href="spec.html">Specification</a>
+      <a href="security.html">Security</a>
+      <a href="https://github.com/thatwasyahya/mURL">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap">
+  <h1>Build a destination</h1>
+  <p class="lede">
+    Paste the things that make up one piece of work — a repository, its docs,
+    a dashboard, the folder on your disk, a terminal in it. You get a manifest
+    that <strong>your browser validates with the real implementation</strong>:
+    murl-core compiled to WebAssembly, the same code the CLI runs.
+    <span id="engine">loading the validator…</span>
+  </p>
+
+  <div class="panel" style="border-color: var(--accent)">
+    <h3>One thing to know first</h3>
+    <p class="sub" style="margin-bottom:.4rem">
+      An mURL is a <em>name</em>, not a container. It does not carry your
+      resources — it points at a manifest that lists them. So this page gives
+      you the manifest, plus the one command that makes
+      <code>murl://local/&lt;name&gt;</code> resolve on your machine, and the
+      path to host it at if you want the name to work for other people too.
+      Anything that promised a single self-contained link would be promising
+      something the format deliberately does not do.
+    </p>
+  </div>
+
+  <div class="pg-grid">
+    <section>
+      <div class="field">
+        <label for="resources">Resources <span class="note">one per line — a URL, an absolute or <code>~</code> path, or a kind first: <code>terminal ~/projects/x</code></span></label>
+        <textarea id="resources" rows="10" spellcheck="false" placeholder="https://github.com/you/project&#10;https://docs.example.com/project&#10;~/projects/project&#10;terminal ~/projects/project"></textarea>
+      </div>
+      <div class="two">
+        <div class="field">
+          <label for="name">Name</label>
+          <input type="text" id="name" placeholder="Project X" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="slug">Local name <span class="note">murl://local/…</span></label>
+          <input type="text" id="slug" placeholder="project-x" spellcheck="false">
+        </div>
+      </div>
+      <div class="field">
+        <label for="description">Description <span class="note">optional</span></label>
+        <input type="text" id="description" placeholder="Everything that makes up the Project X context.">
+      </div>
+      <div class="field">
+        <label for="authority">Publish under <span class="note">optional — a domain you control</span></label>
+        <input type="text" id="authority" placeholder="acme.example" spellcheck="false">
+      </div>
+      <button class="btn" id="example" type="button">Load an example</button>
+
+      <div class="panel" style="margin-top:1.2rem">
+        <h3>What it read</h3>
+        <p class="sub">Kinds and risk tiers come from murl-core, not from this page.</p>
+        <div id="parsed"><p class="hint">Paste a URL or a path above — one per line.</p></div>
+        <div id="problems"></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="panel">
+        <div class="head">
+          <div>
+            <h3>The manifest</h3>
+            <p class="sub">Validated against the v0.2 specification.</p>
+          </div>
+          <div>
+            <button class="btn" type="button" data-copy="manifest">copy</button>
+            <button class="btn hidden" id="download" type="button">download</button>
+          </div>
+        </div>
+        <pre class="out"><code id="manifest"></code></pre>
+      </div>
+
+      <div class="panel">
+        <div class="head">
+          <div>
+            <h3>Use it on your machine</h3>
+            <p class="sub">Save the file next to you, then:</p>
+          </div>
+          <button class="btn" type="button" data-copy="install">copy</button>
+        </div>
+        <pre class="out"><code id="install"></code></pre>
+      </div>
+
+      <div class="panel">
+        <div class="head">
+          <div>
+            <h3>Share it with other people</h3>
+            <p class="sub">Static hosting is the whole server side of mURL.</p>
+          </div>
+          <button class="btn" type="button" data-copy="publish">copy</button>
+        </div>
+        <pre class="out"><code id="publish"></code></pre>
+      </div>
+    </section>
+  </div>
+
+  <section>
+    <h2>Why some lines turn red</h2>
+    <p>
+      The rules rejecting them are the same ones that protect a click on a
+      <code>murl://</code> link from a stranger, so the playground applies
+      them rather than being lenient and letting you find out later:
+    </p>
+    <ul>
+      <li><code>http://</code> is refused except for loopback — a manifest is fetched over TLS or not at all.</li>
+      <li>Relative paths and <code>..</code> are refused: there is no answer to "relative to what?" that survives an OS handler.</li>
+      <li>Userinfo in a URL is refused — <code>https://github.com@evil.example</code> is a phishing shape, not an address.</li>
+      <li>A file whose extension is executable-adjacent (<code>.sh</code>, <code>.exe</code>, <code>.desktop</code>) is <span class="tier dangerous">DANGEROUS</span>, not <span class="tier sensitive">SENSITIVE</span>: opening it <em>is</em> running it.</li>
+    </ul>
+    <p>
+      Nothing you type leaves your browser. The page fetches one
+      <code>.wasm</code> file and does the rest locally — there is no server
+      to send a manifest to, which is also true of mURL itself.
+    </p>
+  </section>
+</div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p class="small">
+      mURL is experimental. <a href="spec.html">Specification</a> ·
+      <a href="https://github.com/thatwasyahya/mURL">Source</a> ·
+      MIT OR Apache-2.0
+    </p>
+  </div>
+</footer>
+
+<script src="playground.js"></script>
+</body>
+</html>

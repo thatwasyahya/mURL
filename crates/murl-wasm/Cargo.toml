@@ -1,0 +1,38 @@
+[package]
+name = "murl-wasm"
+description = "WebAssembly bindings for murl-core, so a browser can build and validate mURL manifests with the reference implementation rather than a re-implementation of its rules."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Without `keygen`: no entropy needed, so no wasm-bindgen in the graph
+# and the module instantiates with an empty import object.
+murl-core = { path = "../murl-core", version = "0.5.0", default-features = false }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Deliberately NOT `[lints] workspace = true`.
+#
+# The workspace *forbids* unsafe, and forbid cannot be lifted by an inner
+# allow — that is the point of it. A wasm export can only pass integers, so
+# handing a string across the boundary means raw pointers, and raw pointers
+# mean unsafe. Rather than weaken the workspace rule for every crate, the
+# exception is isolated here: three small functions, each with a safety
+# comment, and no unsafe anywhere else in this crate. murl-core keeps its
+# forbid untouched.
+[lints.rust]
+missing_debug_implementations = "warn"
+unused_must_use = "warn"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
