@@ -4,227 +4,627 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>mURL — one identifier, a whole working context</title>
-<meta name="description" content="mURL is an experimental OS-level addressing primitive: one identifier resolves to a manifest describing a set of resources, dispatched under a consent-based security policy.">
+<meta name="description" content="mURL is an experimental addressing primitive: one identifier resolves to a manifest describing a set of resources, shown to you and dispatched under a consent-based, locally decided security policy.">
+<script>
+(function(){try{var q=new URLSearchParams(location.search).get("theme");var t=q||localStorage.getItem("murl-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
+</script>
 <link rel="stylesheet" href="style.css">
+<style>
+/* ---- page: landing ---------------------------------------------------- */
+.hero { padding-top: clamp(2.5rem, 5vw, 4.5rem); padding-bottom: clamp(3rem, 5vw, 4.5rem); position: relative; isolation: isolate; }
+.hero::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: radial-gradient(var(--grid) 1px, transparent 1px); background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 80% at 72% 45%, #000 20%, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 80% at 72% 45%, #000 20%, transparent 75%);
+}
+.hero h1 { margin-bottom: 1.1rem; max-width: 13ch; }
+.hero .lede { margin-bottom: 0; }
+.hero .cta { margin: 1.9rem 0 1.1rem; }
+.cmdline {
+  display: flex; align-items: center; gap: .6rem; max-width: 33rem;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: .4rem .4rem .4rem .95rem; font-family: var(--font-mono); font-size: .86rem;
+}
+.cmdline .dollar { color: var(--accent); user-select: none; }
+.cmdline code { background: none; border: 0; padding: 0; flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; color: var(--fg-0); font-size: inherit; scrollbar-width: none; }
+.cmdline code::-webkit-scrollbar { display: none; }
+.cmdline .copy { flex: none; }
+.hero-meta { margin-top: 1.1rem; color: var(--fg-2); font-size: .8rem; font-family: var(--font-mono); letter-spacing: .01em; }
+.hero-meta a { color: var(--fg-1); }
+
+/* resolution diagram (inline SVG; tokens via CSS variables) */
+.diagram-wrap { position: relative; }
+.diagram { display: block; width: 100%; max-width: 34rem; height: auto; margin: 0 auto; font-family: var(--font-mono); }
+.diagram .root-box { fill: var(--bg-2); stroke: var(--accent-line); stroke-width: 1.2; }
+.diagram .root-text { font-size: 13.5px; }
+.diagram .root-text .s { fill: var(--accent); }
+.diagram .root-text .a { fill: var(--fg-1); }
+.diagram .root-text .n { fill: var(--fg-0); font-weight: 600; }
+.diagram .pipe { font-size: 9.5px; fill: var(--fg-2); letter-spacing: .04em; }
+.diagram .trunk { fill: none; stroke: var(--line-strong); stroke-width: 1.5; }
+.diagram .branch { fill: none; stroke: var(--line-strong); stroke-width: 1.5; }
+.diagram .leaf .box { fill: var(--bg-1); stroke: var(--line-strong); stroke-width: 1; }
+.diagram .leaf.safe .box { stroke: var(--safe); stroke-opacity: .55; }
+.diagram .leaf.sensitive .box { stroke: var(--sensitive); stroke-opacity: .6; }
+.diagram .leaf.dangerous .box { stroke: var(--danger); stroke-opacity: .6; }
+.diagram .leaf .ni { fill: none; stroke: var(--fg-1); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.diagram .leaf .t-id { font-size: 12.5px; font-weight: 600; fill: var(--fg-0); }
+.diagram .leaf .t-target { font-size: 10.5px; fill: var(--fg-2); }
+.diagram .leaf .kind { font-size: 9.5px; fill: var(--fg-2); }
+.diagram .pill-box { rx: 4; }
+.diagram .pill-text { font-size: 9px; font-weight: 600; letter-spacing: .07em; }
+.diagram .safe .pill-box { fill: var(--safe-soft); } .diagram .safe .pill-text { fill: var(--safe); }
+.diagram .sensitive .pill-box { fill: var(--sensitive-soft); } .diagram .sensitive .pill-text { fill: var(--sensitive); }
+.diagram .dangerous .pill-box { fill: var(--danger-soft); } .diagram .dangerous .pill-text { fill: var(--danger); }
+.diagram .dot { fill: var(--accent); }
+.diagram-cap { display: flex; justify-content: center; gap: 1.2rem; flex-wrap: wrap; margin: .9rem auto 0; max-width: 34rem; color: var(--fg-2); font-size: .78rem; font-family: var(--font-mono); }
+.diagram-cap b { color: var(--fg-1); font-weight: 500; }
+
+/* section heads */
+.sec-head { max-width: 46rem; margin-bottom: 2rem; }
+.sec-head h2 { margin-bottom: .6rem; }
+.sec-head p { color: var(--fg-1); margin-bottom: 0; }
+
+/* what an mURL is: the two-line comparison as a figure */
+.compare { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--bg-1); overflow: hidden; margin: 0 0 1.75rem; }
+.cmp-row { display: grid; grid-template-columns: 5.5rem 1fr; align-items: center; gap: 1rem; padding: 1.1rem 1.25rem; }
+.cmp-row + .cmp-row { border-top: 1px solid var(--line); }
+.cmp-label { font-family: var(--font-mono); font-weight: 600; font-size: .95rem; color: var(--fg-1); }
+.cmp-row.is-murl .cmp-label { color: var(--accent); }
+.cmp-chain { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem; }
+.chip { font-family: var(--font-mono); font-size: .84rem; padding: .38em .7em; border-radius: var(--r-sm); border: 1px solid var(--line-strong); background: var(--bg-2); color: var(--fg-0); white-space: nowrap; }
+.chip.manifest { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent); }
+.chip.set { display: inline-flex; align-items: center; gap: .5em; border-style: dashed; white-space: normal; }
+.chip.set .br { color: var(--accent); font-weight: 600; }
+.chip.set .r { display: inline-flex; align-items: center; gap: .32em; white-space: nowrap; }
+.chip.set .r i { width: .5em; height: .5em; border-radius: 2px; display: inline-block; }
+.chip.set .r.safe i { background: var(--safe); } .chip.set .r.sensitive i { background: var(--sensitive); } .chip.set .r.dangerous i { background: var(--danger); }
+.chip.set .r.more { color: var(--fg-2); }
+.cmp-arrow { color: var(--fg-2); width: 1.1rem; height: 1.1rem; }
+.cmp-end { color: var(--fg-1); font-size: .9rem; }
+@media (max-width: 40rem) {
+  .cmp-row { grid-template-columns: 1fr; gap: .5rem; padding: 1rem; }
+}
+
+/* resolution: terminal + steps */
+.resolve-grid { display: grid; gap: 2rem; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 62rem) { .resolve-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr); gap: 3rem; } }
+.terminal pre { font-size: .8rem; }
+@media (max-width: 40rem) { .terminal pre { font-size: .72rem; padding: .9rem 1rem; } }
+.steps { list-style: none; padding: 0; margin: 0; counter-reset: step; }
+.steps li { max-width: none; margin: 0; padding: 1.1rem 0 1.1rem 3.2rem; position: relative; border-top: 1px solid var(--line); }
+.steps li:first-child { border-top: 0; padding-top: 0; }
+.steps li::before {
+  counter-increment: step; content: "0" counter(step);
+  position: absolute; left: 0; top: 1.15rem; font-family: var(--font-mono); font-size: .8rem; font-weight: 600; letter-spacing: .06em; color: var(--accent);
+}
+.steps li:first-child::before { top: .1rem; }
+.steps h3 { font-family: var(--font-mono); font-size: 1rem; font-weight: 600; margin-bottom: .35rem; letter-spacing: 0; }
+.steps p { color: var(--fg-1); font-size: .93rem; margin: 0; }
+
+/* tiers */
+.tier-cards { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 1.75rem; }
+@media (max-width: 52rem) { .tier-cards { grid-template-columns: 1fr; } }
+.tier-cards .card { padding: 1.35rem 1.4rem 1.2rem; display: flex; flex-direction: column; }
+.tier-cards .kinds { font-family: var(--font-mono); font-size: 1rem; font-weight: 600; margin: .45rem 0 .5rem; color: var(--fg-0); letter-spacing: -0.01em; }
+.tier-cards .kinds .x { color: var(--fg-2); font-weight: 400; font-size: .82rem; }
+.tier-cards .card > p { flex: 1; }
+.req { margin-top: .9rem; padding-top: .9rem; border-top: 1px solid var(--line); display: grid; gap: .45rem; }
+.req div { display: flex; gap: .55rem; align-items: flex-start; font-size: .86rem; color: var(--fg-1); }
+.req .icon { width: 1rem; height: 1rem; margin-top: .22rem; color: var(--fg-2); }
+.req .ok .icon { color: var(--safe); }
+.req .no .icon { color: var(--danger); }
+.req .no { color: var(--fg-0); }
+.req strong { color: var(--fg-0); font-weight: 600; }
+.keystone { display: grid; gap: 1.5rem; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 62rem) { .keystone { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 3rem; } }
+.rules { list-style: none; padding: 0; margin: 0; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; font-size: .88rem; }
+.rules li { margin: 0; max-width: none; display: grid; grid-template-columns: 1fr auto; gap: 1rem; padding: .65rem 1rem; border-top: 1px solid var(--line); color: var(--fg-1); }
+.rules li:first-child { border-top: 0; }
+.rules li b { font-family: var(--font-mono); font-weight: 600; font-size: .78rem; letter-spacing: .04em; white-space: nowrap; color: var(--fg-0); }
+.rules li b.deny { color: var(--danger); }
+.rules code { font-size: .82em; }
+
+/* install */
+.install-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem 2rem; margin-bottom: 1.25rem; }
+.install-head .sec-head { margin-bottom: 0; }
+.install .tabs { margin-bottom: 1rem; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.install .tabs::-webkit-scrollbar { display: none; }
+.install .tabs button { white-space: nowrap; }
+.install .codeblock { margin-bottom: .75rem; }
+.install .panel-note { color: var(--fg-2); font-size: .85rem; margin: 0; }
+.install .panel-note code { font-size: .85em; }
+.after { display: grid; gap: 1.5rem; grid-template-columns: 1fr; margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--line); }
+@media (min-width: 62rem) { .after { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 3rem; } }
+.after h3 { margin-bottom: .5rem; }
+.after p { color: var(--fg-1); font-size: .95rem; }
+.after .codeblock { margin: 0; }
+
+/* stats + further */
+.stats-section { padding-top: 0; border-top: 0 !important; }
+.stats .n small { font-size: .55em; color: var(--fg-2); font-weight: 500; letter-spacing: 0; }
+.further .linklist { margin: 0; }
+.further .linklist a { align-items: baseline; }
+.further .linklist a .who { font-family: var(--font-mono); font-size: .75rem; color: var(--fg-2); font-weight: 400; margin-left: .5rem; }
+@media (max-width: 40rem) { .further .linklist a { flex-direction: column; gap: .2rem; } }
+</style>
 </head>
 <body>
 
 <a class="skip" href="#main">Skip to content</a>
-
 <header class="site-head">
   <div class="wrap">
-    <a class="brand" href="index.html">murl://</a>
-    <nav>
+    <a class="brand" href="index.html"><span class="mark">m</span><span class="scheme">murl</span>://</a>
+    <nav id="nav">
       <a href="index.html" aria-current="page">Overview</a>
       <a href="playground.html">Playground</a>
       <a href="spec.html">Specification</a>
       <a href="security.html">Security</a>
-      <a href="https://github.com/thatwasyahya/mURL">GitHub</a>
+      <a href="https://github.com/thatwasyahya/mURL">GitHub <svg class="icon"><use href="vendor/icons.svg#i-arrow-up-right"/></svg></a>
     </nav>
+    <div class="actions">
+      <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle theme">
+        <svg class="icon icon-sun"><use href="vendor/icons.svg#i-sun"/></svg>
+        <svg class="icon icon-moon"><use href="vendor/icons.svg#i-moon"/></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-label="Menu" aria-expanded="false" aria-controls="nav">
+        <svg class="icon"><use href="vendor/icons.svg#i-menu"/></svg>
+      </button>
+    </div>
   </div>
 </header>
 
 <main id="main">
-<div class="wrap">
 
-  <h1>One identifier that opens a whole working context.</h1>
-      <p class="lede">
-        <a href="playground.html"><strong>Try it in your browser</strong></a> —
-        paste the resources that make up one piece of work and get a validated
-        manifest back, checked by murl-core itself compiled to WebAssembly.
+<!-- ================================================================ hero -->
+<section class="hero">
+  <div class="wrap">
+    <div class="split">
+      <div>
+        <p class="eyebrow">Multi-Resource Uniform Locator · v0.5.0 · experimental</p>
+        <h1>One identifier that opens a <span class="display">whole</span> working context.</h1>
+        <p class="lede">
+          A URL addresses one resource. An mURL addresses a set of them — a
+          repository, its docs, its dashboard, a working directory, a terminal
+          — under a single name that can be inspected before anything happens.
+        </p>
+        <div class="row cta">
+          <a class="btn btn-primary" href="playground.html">Try the playground <svg class="icon"><use href="vendor/icons.svg#i-arrow-right"/></svg></a>
+          <a class="btn btn-ghost" href="#install">Install <svg class="icon"><use href="vendor/icons.svg#i-chevron-down"/></svg></a>
+        </div>
+        <div class="cmdline">
+          <span class="dollar" aria-hidden="true">$</span>
+          <code id="hero-cmd">brew install thatwasyahya/murl/murl</code>
+          <button class="btn btn-sm btn-ghost copy" type="button" data-copy="hero-cmd" aria-label="Copy install command"><svg class="icon"><use href="vendor/icons.svg#i-copy"/></svg> copy</button>
+        </div>
+        <p class="hero-meta">format v0.2 · Rust reference + Python implementation · <span style="white-space:nowrap">MIT OR Apache-2.0</span></p>
+      </div>
+
+      <div class="diagram-wrap">
+        <svg class="diagram" id="resolve-diagram" viewBox="0 0 440 436" role="img" aria-labelledby="diagram-title diagram-desc">
+          <title id="diagram-title">Resolution of murl://acme.example/project-x</title>
+          <desc id="diagram-desc">One mURL fans out to six resources: a GitHub repository, documentation and a Grafana dashboard (SAFE), a working directory and a notes file (SENSITIVE), and a terminal (DANGEROUS).</desc>
+
+          <!-- the branches: drawn from the root, down the trunk, out to each leaf -->
+          <g class="branches">
+            <path class="branch" d="M40 56 V100 Q40 116 56 116 H70"/>
+            <path class="branch" d="M40 56 V156 Q40 172 56 172 H70"/>
+            <path class="branch" d="M40 56 V212 Q40 228 56 228 H70"/>
+            <path class="branch" d="M40 56 V268 Q40 284 56 284 H70"/>
+            <path class="branch" d="M40 56 V324 Q40 340 56 340 H70"/>
+            <path class="branch" d="M40 56 V380 Q40 396 56 396 H70"/>
+          </g>
+
+          <!-- the root: the mURL itself -->
+          <g class="root">
+            <rect class="root-box" x="16" y="16" width="270" height="40" rx="9"/>
+            <text class="root-text" x="30" y="41"><tspan class="s">murl://</tspan><tspan class="a">acme.example/</tspan><tspan class="n">project-x</tspan></text>
+            <circle class="dot" cx="40" cy="56" r="2.5"/>
+            <text class="pipe" x="56" y="82">parse → fetch manifest → validate → verify → policy</text>
+          </g>
+
+          <!-- the leaves: each resource, its kind, its tier -->
+          <g transform="translate(70 94)"><g class="leaf safe">
+            <rect class="box" width="358" height="44" rx="8"/>
+            <svg class="ni" x="12" y="13" width="18" height="18" viewBox="0 0 24 24"><use href="vendor/icons.svg#i-github"/></svg>
+            <text class="t-id" x="40" y="19">source <tspan class="kind">https</tspan></text>
+            <text class="t-target" x="40" y="34">https://github.com/acme/project-x</text>
+            <rect class="pill-box" x="304" y="13" width="42" height="18"/>
+            <text class="pill-text" x="325" y="25.5" text-anchor="middle">SAFE</text>
+          </g></g>
+
+          <g transform="translate(70 150)"><g class="leaf safe">
+            <rect class="box" width="358" height="44" rx="8"/>
+            <svg class="ni" x="12" y="13" width="18" height="18" viewBox="0 0 24 24"><use href="vendor/icons.svg#i-book-open"/></svg>
+            <text class="t-id" x="40" y="19">docs <tspan class="kind">https</tspan></text>
+            <text class="t-target" x="40" y="34">https://docs.acme.example/project-x</text>
+            <rect class="pill-box" x="304" y="13" width="42" height="18"/>
+            <text class="pill-text" x="325" y="25.5" text-anchor="middle">SAFE</text>
+          </g></g>
+
+          <g transform="translate(70 206)"><g class="leaf safe">
+            <rect class="box" width="358" height="44" rx="8"/>
+            <svg class="ni" x="12" y="13" width="18" height="18" viewBox="0 0 24 24"><use href="vendor/icons.svg#i-monitor"/></svg>
+            <text class="t-id" x="40" y="19">monitoring <tspan class="kind">https</tspan></text>
+            <text class="t-target" x="40" y="34">https://grafana.acme.example/d/px</text>
+            <rect class="pill-box" x="304" y="13" width="42" height="18"/>
+            <text class="pill-text" x="325" y="25.5" text-anchor="middle">SAFE</text>
+          </g></g>
+
+          <g transform="translate(70 262)"><g class="leaf sensitive">
+            <rect class="box" width="358" height="44" rx="8"/>
+            <svg class="ni" x="12" y="13" width="18" height="18" viewBox="0 0 24 24"><use href="vendor/icons.svg#i-folder"/></svg>
+            <text class="t-id" x="40" y="19">workspace <tspan class="kind">dir</tspan></text>
+            <text class="t-target" x="40" y="34">~/projects/project-x</text>
+            <rect class="pill-box" x="280" y="13" width="66" height="18"/>
+            <text class="pill-text" x="313" y="25.5" text-anchor="middle">SENSITIVE</text>
+          </g></g>
+
+          <g transform="translate(70 318)"><g class="leaf sensitive">
+            <rect class="box" width="358" height="44" rx="8"/>
+            <svg class="ni" x="12" y="13" width="18" height="18" viewBox="0 0 24 24"><use href="vendor/icons.svg#i-file"/></svg>
+            <text class="t-id" x="40" y="19">notes <tspan class="kind">file</tspan></text>
+            <text class="t-target" x="40" y="34">~/projects/project-x/NOTES.md</text>
+            <rect class="pill-box" x="280" y="13" width="66" height="18"/>
+            <text class="pill-text" x="313" y="25.5" text-anchor="middle">SENSITIVE</text>
+          </g></g>
+
+          <g transform="translate(70 374)"><g class="leaf dangerous">
+            <rect class="box" width="358" height="44" rx="8"/>
+            <svg class="ni" x="12" y="13" width="18" height="18" viewBox="0 0 24 24"><use href="vendor/icons.svg#i-terminal"/></svg>
+            <text class="t-id" x="40" y="19">term <tspan class="kind">terminal</tspan></text>
+            <text class="t-target" x="40" y="34">~/projects/project-x</text>
+            <rect class="pill-box" x="278" y="13" width="68" height="18"/>
+            <text class="pill-text" x="312" y="25.5" text-anchor="middle">DANGEROUS</text>
+          </g></g>
+        </svg>
+        <p class="diagram-cap"><span><b>6</b> resources</span><span><b>1</b> consent step</span><span><b>0</b> shells</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================= what an mURL is -->
+<section id="what">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <p class="eyebrow">What an mURL is</p>
+      <h2>A name for a set, with a document in between.</h2>
+    </div>
+
+    <div class="compare" data-reveal="0.05" role="figure" aria-label="URL versus mURL">
+      <div class="cmp-row">
+        <span class="cmp-label">URL</span>
+        <div class="cmp-chain">
+          <span class="chip">identifier</span>
+          <svg class="icon cmp-arrow"><use href="vendor/icons.svg#i-arrow-right"/></svg>
+          <span class="chip">one resource</span>
+        </div>
+      </div>
+      <div class="cmp-row is-murl">
+        <span class="cmp-label">mURL</span>
+        <div class="cmp-chain">
+          <span class="chip">identifier</span>
+          <svg class="icon cmp-arrow"><use href="vendor/icons.svg#i-arrow-right"/></svg>
+          <span class="chip manifest">manifest</span>
+          <svg class="icon cmp-arrow"><use href="vendor/icons.svg#i-arrow-right"/></svg>
+          <span class="chip set"><span class="br">{</span>
+            <span class="r safe"><i></i>source</span>
+            <span class="r safe"><i></i>docs</span>
+            <span class="r sensitive"><i></i>workspace</span>
+            <span class="r dangerous"><i></i>term</span>
+            <span class="r more">…</span>
+          <span class="br">}</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="split" data-reveal="0.1" style="align-items:start">
+      <p>
+        The indirection through a manifest is the whole point. Because the set
+        is a document rather than a string, it has a canonical byte form — so it
+        can be hashed, signed, versioned, cached, diffed, and above all
+        <em>shown to you before it acts</em>. Publishing a namespace means
+        serving static JSON under <code>/.well-known/murl/</code>: no registry,
+        no account, no new infrastructure. An mURL is a name, never a container.
       </p>
-      <img src="demo.svg" alt="murl resolve showing a destination resolved into eight resources, each tagged SAFE, SENSITIVE or DANGEROUS" style="width:100%;max-width:820px;height:auto;margin:1.5rem 0;border-radius:10px">
-
-  <p class="lede">
-    A URL addresses one resource. An mURL addresses a <em>set</em> of them —
-    a repository, its docs, its dashboard, a working directory, a terminal —
-    under a single name that can be inspected before anything happens.
-  </p>
-
-  <ul class="badges">
-    <li class="badge warn">experimental</li>
-    <li class="badge">format v0.2</li>
-    <li class="badge">release 0.4.0</li>
-    <li class="badge">Rust · MIT OR Apache-2.0</li>
-  </ul>
-
-  <div class="note">
-    <p><strong>This is a proposal with a working implementation, not a standard.</strong>
-    The <code>murl</code> scheme is unregistered, no third party has adopted it,
-    and the format may still change before 1.0. Read it as a design worth
-    arguing with — see <a href="spec.html">the specification page</a> for what
-    that means in practice.</p>
-  </div>
-
-  <h2>The idea in two lines</h2>
-
-<pre><code>URL   :  identifier ──────────────▶ one resource
-mURL  :  identifier ──▶ manifest ──▶ { resource, resource, resource, … }</code></pre>
-
-  <p>
-    The indirection through a manifest is the whole point. Because the set is
-    a document rather than a string, it has a canonical byte form — so it can
-    be hashed, signed, versioned, cached, diffed, and above all
-    <em>shown to you before it acts</em>. An mURL is a name, never a container.
-  </p>
-
-  <h2>What resolution looks like</h2>
-
-  <figure class="figure">
-<pre><code>                    murl://acme.example/project-x
-                                 │
-                        ┌────────▼────────┐
-                        │  mURL resolver  │  parse → fetch manifest →
-                        │                 │  validate → verify → policy
-                        └────────┬────────┘
-                                 │  consent: "Project X wants to open…"
-     ┌──────────┬──────────┬─────┴─────┬───────────┬──────────┐
-     ▼          ▼          ▼           ▼           ▼          ▼
-  GitHub      Docs       Jira       Grafana   ~/projects   terminal
-     │          │          │           │       /project-x     │
-     ▼          ▼          ▼           ▼           ▼          ▼
-  browser    browser    browser     browser    file mgr   terminal app
-   SAFE       SAFE       SAFE        SAFE     SENSITIVE   DANGEROUS</code></pre>
-    <figcaption>
-      Every leaf is an ordinary URL or path handed to the same application you
-      use today. mURL is a composition layer above locators, not a replacement
-      for them.
-    </figcaption>
-  </figure>
-
-  <h2>A manifest</h2>
-
-  <p>
-    Publishing a namespace means serving static JSON from a web server under
-    <code>/.well-known/murl/</code>. There is no registry, no account, and no
-    new infrastructure.
-  </p>
-
-<pre><code>{
-  "murlVersion": "0.2",
-  "id": "murl://local/project-x",
-  "name": "Project X",
-  "resources": [
-    { "id": "source",    "kind": "https",    "target": "https://github.com/acme/project-x" },
-    { "id": "workspace", "kind": "dir",      "target": "~/projects/project-x" },
-    { "id": "term",      "kind": "terminal", "target": "~/projects/project-x", "dependsOn": ["workspace"] }
-  ]
-}</code></pre>
-
-  <p class="small">
-    Resources may also be <code>file</code>, a nested <code>murl</code>, or a
-    <code>custom:*</code> kind dispatched through a handler you registered
-    yourself. Full schema in
-    <a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#5-the-manifest">specification §5</a>.
-  </p>
-
-  <h2>Three tiers, decided locally</h2>
-
-  <p>
-    An identifier that can make an operating system open many things is an
-    attack primitive by default. Classification derives from what a resource
-    <em>is</em> — its kind plus its target — never from what a manifest claims
-    about itself.
-  </p>
-
-  <div class="cards three">
-    <div class="card tier tier-safe">
-      <span class="tier-name">SAFE</span>
-      <h3>https</h3>
-      <p>Rendered by a sandboxed browser. Worst case is roughly a tab.</p>
-    </div>
-    <div class="card tier tier-sensitive">
-      <span class="tier-name">SENSITIVE</span>
-      <h3>file, dir</h3>
-      <p>Exposes or touches local data. Prompts, always, with the path shown.</p>
-    </div>
-    <div class="card tier tier-dangerous">
-      <span class="tier-name">DANGEROUS</span>
-      <h3>terminal, custom:*, executable-ish files</h3>
-      <p>Opening it is, or is one dialog from, code execution. From an
-      untrusted manifest this is a refusal — not a prompt.</p>
+      <div class="note" style="margin:0">
+        <p><strong>This is a proposal with a working implementation, not a standard.</strong>
+        The <code>murl</code> scheme is unregistered, no third party has adopted
+        it, and the format may still change before 1.0. Read it as a design
+        worth arguing with — <a href="spec.html">the specification page</a>
+        says what that means in practice.</p>
+      </div>
     </div>
   </div>
+</section>
 
-  <p>
-    That last rule is the keystone. Users can be talked into one click, and one
-    click is exactly what a hostile mURL gets; making terminals from unknown
-    senders un-clickable removes the social-engineering path rather than
-    warning about it. <a href="security.html">More on the security model →</a>
-  </p>
+<!-- ================================================ what resolution looks like -->
+<section id="resolve">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <p class="eyebrow">What resolution looks like</p>
+      <h2>The plan is printed before anything opens.</h2>
+      <p>Real output from <code>murl resolve</code> against the example destination in the repository. Every leaf is an ordinary URL or path handed to the application you already use; mURL is a composition layer above locators, not a replacement for them.</p>
+    </div>
 
-  <h2>Try it</h2>
+    <div class="resolve-grid">
+      <div class="terminal" data-reveal="0.05">
+        <div class="bar"><i></i><i></i><i></i><span class="title">murl — resolve</span></div>
+<pre><span class="prompt">$</span> <span class="cmd">murl resolve murl://local/demo/project-x</span>
+Project X  <span class="dim">(murl://local/demo/project-x)</span>
+  <span class="dim">Everything that makes up the Project X development context.</span>
+  manifest: local store <span class="dim">(~/.local/share/murl/names/demo/project-x.murl.json)</span>  trust: <span class="safe">LOCAL</span>
+  manifest: local store <span class="dim">(~/.local/share/murl/names/demo/team.murl.json)</span>  trust: <span class="safe">LOCAL</span>
+  resources:
+    ├─ source      <span class="safe">SAFE</span>       https      https://github.com/example/project-x
+    ├─ docs        <span class="safe">SAFE</span>       https      https://docs.example.com/project-x
+    ├─ issues      <span class="safe">SAFE</span>       https      https://jira.example.com/projects/PX
+    ├─ monitoring  <span class="safe">SAFE</span>       https      https://grafana.example.com/d/project-x
+    ├─ workspace   <span class="sensitive">SENSITIVE</span>  dir        ~/projects/project-x
+         <span class="dim">⚠ consent: SENSITIVE resource</span>
+    ├─ term        <span class="danger">DANGEROUS</span>  terminal   ~/projects/project-x
+         <span class="dim">⚠ consent: DANGEROUS resource</span>
+    ├─ wiki        <span class="safe">SAFE</span>       https      https://wiki.example.com/team
+    └─ chat        <span class="safe">SAFE</span>       https      https://chat.example.com/#/room/team
+<span class="prompt">$</span> <span class="cursor"></span></pre>
+      </div>
 
-  <p>
-    There is no published package yet. Build from source — the workspace is
-    four Rust crates with no unsafe code.
-  </p>
+      <ol class="steps" data-reveal="0.1">
+        <li>
+          <h3>resolve</h3>
+          <p><code>murl resolve</code> prints the fully resolved plan: every resource after nested destinations are spliced in (<code>wiki</code> and <code>chat</code> come from <code>team</code>), its tier, where each manifest came from and whether it is trusted. Nothing opens.</p>
+        </li>
+        <li>
+          <h3>inspect</h3>
+          <p>The plan is the thing you agree to. Consent to a <em>name</em> would be meaningless — a name can point anywhere — so consent is always to the <em>set</em>, tier by tier, with local paths spelled out.</p>
+        </li>
+        <li>
+          <h3>consent</h3>
+          <p><code>murl open</code> shows the same plan and asks once. Each resource then goes to its handler as an argv array: browser, file manager, terminal app. No target string ever reaches a shell.</p>
+        </li>
+      </ol>
+    </div>
+  </div>
+</section>
 
-<pre><code>git clone https://github.com/thatwasyahya/mURL &amp;&amp; cd mURL
-cargo build
+<!-- ================================================== three tiers, decided locally -->
+<section id="tiers">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <p class="eyebrow">Three tiers, decided locally</p>
+      <h2>Classified by what a resource is, never by what a manifest claims.</h2>
+      <p>An identifier that can make an operating system open many things is an attack primitive by default. So the tier derives from kind plus target, the policy lives in local, user-owned configuration, and no manifest content can reach it.</p>
+    </div>
 
-# a hermetic guided tour: temp state, dry-run open, auto-cleanup
-bash examples/demo.sh</code></pre>
+    <div class="tier-cards" data-reveal="0.05">
+      <div class="card tier tier-safe">
+        <span class="tier-name">SAFE</span>
+        <div class="kinds">https</div>
+        <p>Rendered by a sandboxed browser. Worst case is roughly a tab.</p>
+        <div class="req">
+          <div class="ok"><svg class="icon"><use href="vendor/icons.svg#i-check"/></svg><span><strong>Consent</strong> — one consolidated step for the whole set</span></div>
+          <div><svg class="icon"><use href="vendor/icons.svg#i-shield"/></svg><span>Trust not required; an expired manifest still prompts, with a warning</span></div>
+        </div>
+      </div>
+      <div class="card tier tier-sensitive">
+        <span class="tier-name">SENSITIVE</span>
+        <div class="kinds">file, dir</div>
+        <p>Non-executable local paths. Opening one exposes or touches local data.</p>
+        <div class="req">
+          <div class="ok"><svg class="icon"><use href="vendor/icons.svg#i-check"/></svg><span><strong>Consent</strong> — always, with the path shown</span></div>
+          <div><svg class="icon"><use href="vendor/icons.svg#i-circle-alert"/></svg><span>A remote manifest pointing at local disk adds an extra consent reason, or is denied by policy</span></div>
+        </div>
+      </div>
+      <div class="card tier tier-dangerous">
+        <span class="tier-name">DANGEROUS</span>
+        <div class="kinds">terminal, custom:* <span class="x">+ executable-adjacent files</span></div>
+        <p>Opening it is, or is one dialog away from, code execution. A <code>file</code> that is really a <code>.desktop</code>, <code>.lnk</code>, <code>.sh</code> or <code>.exe</code> lands here too — classification looks at the target, not the label.</p>
+        <div class="req">
+          <div class="ok"><svg class="icon"><use href="vendor/icons.svg#i-check"/></svg><span><strong>Consent + trust</strong> — the manifest is installed locally, or signed by a key you pinned</span></div>
+          <div class="no"><svg class="icon"><use href="vendor/icons.svg#i-x"/></svg><span><strong>Untrusted: denied.</strong> Not a scarier prompt — a refusal</span></div>
+        </div>
+      </div>
+    </div>
 
-  <p>Or drive it by hand:</p>
+    <div class="keystone" data-reveal="0.1">
+      <div>
+        <p>
+          That last rule is the keystone. Users can be talked into one click,
+          and one click is exactly what a hostile mURL gets; making terminals
+          from unknown senders un-clickable removes the social-engineering path
+          rather than warning about it. What remains for an attacker is getting
+          you to run <code>murl trust add</code> or <code>murl name add</code> —
+          deliberate, documented acts.
+        </p>
+        <p><a href="security.html">The full security model, and what it does not defend against <svg class="icon"><use href="vendor/icons.svg#i-arrow-right"/></svg></a></p>
+      </div>
+      <ul class="rules" aria-label="Default policy outcomes">
+        <li><span>SAFE resource</span><b>prompt</b></li>
+        <li><span>SENSITIVE resource</span><b>prompt</b></li>
+        <li><span>DANGEROUS resource, manifest trusted</span><b>prompt</b></li>
+        <li><span>DANGEROUS resource, manifest untrusted</span><b class="deny">deny — not promptable</b></li>
+        <li><span>Expired or not-yet-valid manifest</span><b>SAFE prompts · rest denied</b></li>
+        <li><span>Scripted consent</span><b><code>--yes</code> covers SAFE only</b></li>
+      </ul>
+    </div>
+  </div>
+</section>
 
-<pre><code>murl create --name "Project X"                # write a starter manifest
+<!-- ============================================================== install -->
+<section id="install" class="install">
+  <div class="wrap">
+    <div class="install-head" data-reveal>
+      <div class="sec-head">
+        <p class="eyebrow">Install</p>
+        <h2>Two binaries; only <code>murl</code> is required.</h2>
+        <p>Installing registers nothing and starts nothing. Making <code>murl://</code> clickable is a separate, explicit step: <code>murl os install</code>.</p>
+      </div>
+      <div class="tabs" role="tablist" data-tabs="install">
+        <button role="tab" data-tab="cargo">cargo</button>
+        <button role="tab" data-tab="brew">Homebrew</button>
+        <button role="tab" data-tab="scoop">Scoop</button>
+        <button role="tab" data-tab="winget">winget</button>
+        <button role="tab" data-tab="source">from source</button>
+      </div>
+    </div>
+
+    <div data-reveal="0.05">
+      <div data-panel="cargo" data-group="install">
+        <div class="codeblock"><span class="lang">bash</span><button class="btn btn-sm btn-ghost copy" type="button" data-copy="in-cargo">copy</button>
+<pre><code id="in-cargo" class="language-bash">cargo install murl-cli
+
+# optional: the resident consent surface
+cargo install murl-daemon</code></pre></div>
+        <p class="panel-note">The crate is <code>murl-cli</code>; the binary it installs is <code>murl</code>, in <code>~/.cargo/bin</code>. Needs Rust 1.75 or newer.</p>
+      </div>
+
+      <div data-panel="brew" data-group="install">
+        <div class="codeblock"><span class="lang">bash</span><button class="btn btn-sm btn-ghost copy" type="button" data-copy="in-brew">copy</button>
+<pre><code id="in-brew" class="language-bash">brew install thatwasyahya/murl/murl</code></pre></div>
+        <p class="panel-note">macOS and Linux, from the <a href="https://github.com/thatwasyahya/homebrew-murl">thatwasyahya/murl</a> tap.</p>
+      </div>
+
+      <div data-panel="scoop" data-group="install">
+        <div class="codeblock"><span class="lang">powershell</span><button class="btn btn-sm btn-ghost copy" type="button" data-copy="in-scoop">copy</button>
+<pre><code id="in-scoop" class="language-bash">scoop bucket add murl https://github.com/thatwasyahya/scoop-murl &amp;&amp; scoop install murl</code></pre></div>
+        <p class="panel-note">Windows, from the <a href="https://github.com/thatwasyahya/scoop-murl">scoop-murl</a> bucket.</p>
+      </div>
+
+      <div data-panel="winget" data-group="install">
+        <div class="codeblock"><span class="lang">powershell</span><button class="btn btn-sm btn-ghost copy" type="button" data-copy="in-winget">copy</button>
+<pre><code id="in-winget" class="language-bash">winget install thatwasyahya.murl</code></pre></div>
+        <p class="panel-note"><span class="badge warn">pending review</span> &nbsp;Submitted to winget-pkgs with all checks green; this command does not work until a maintainer merges it. Use Scoop or cargo on Windows meanwhile.</p>
+      </div>
+
+      <div data-panel="source" data-group="install">
+        <div class="codeblock"><span class="lang">bash</span><button class="btn btn-sm btn-ghost copy" type="button" data-copy="in-source">copy</button>
+<pre><code id="in-source" class="language-bash">git clone https://github.com/thatwasyahya/mURL &amp;&amp; cd mURL
+git checkout v0.5.0
+cargo install --path crates/murl-cli
+cargo install --path crates/murl-daemon   # optional; the consent dialog on macOS</code></pre></div>
+        <p class="panel-note">Four crates, pure Rust, <code>unsafe_code</code> forbidden workspace-wide. <code>cargo test</code> and <code>bash examples/demo.sh</code> are worth running once before trusting it with anything.</p>
+      </div>
+    </div>
+
+    <div class="after" data-reveal>
+      <div>
+        <h3>The first five minutes</h3>
+        <p><code>murl resolve</code> before <code>murl open</code> is the habit worth forming: it prints the fully resolved plan, every tier, and the trust status of the manifest, without dispatching anything.</p>
+      </div>
+      <div class="codeblock"><span class="lang">bash</span><button class="btn btn-sm btn-ghost copy" type="button" data-copy="in-first">copy</button>
+<pre><code id="in-first" class="language-bash">murl create --name "Project X"                # write a starter manifest
 murl validate project-x.murl.json
 murl name add project-x project-x.murl.json   # install as murl://local/project-x
 
 murl resolve murl://local/project-x           # see the full plan — nothing opens
 murl open murl://local/project-x              # consent, then dispatch
-murl open 'murl://local/project-x#workspace'  # just one part of it
+murl open 'murl://local/project-x#docs'       # just one part of it
 
 murl keygen &amp;&amp; murl sign project-x.murl.json  # sign it
-murl os install                               # make murl:// clickable</code></pre>
+murl os install                               # make murl:// clickable</code></pre></div>
+    </div>
+  </div>
+</section>
 
-  <p class="small">
-    <code>murl resolve</code> before <code>murl open</code> is the habit worth
-    forming: it prints the fully resolved plan, every tier, and the trust status
-    of the manifest, without dispatching anything.
-  </p>
+<!-- ================================================================ stats -->
+<section class="stats-section">
+  <div class="wrap">
+    <div class="stats" data-reveal>
+      <div class="stat"><div class="n tnum">222</div><div class="l">tests, including the security suites</div></div>
+      <div class="stat"><div class="n tnum">153</div><div class="l">conformance vectors any implementation can run</div></div>
+      <div class="stat"><div class="n tnum">2</div><div class="l">implementations: Rust reference, Python</div></div>
+      <div class="stat"><div class="n tnum">0</div><div class="l">shell invocations, ever — every launch is argv</div></div>
+    </div>
+  </div>
+</section>
 
-  <h2>Read further</h2>
+<!-- ========================================================== read further -->
+<section id="further" class="further">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <p class="eyebrow">Read further</p>
+      <h2>The argument, in full.</h2>
+    </div>
+    <ul class="linklist" data-reveal="0.05">
+      <li>
+        <a href="spec.html">The specification<span class="who">spec.html</span>
+          <span>Grammar, manifest format, resolution, canonical form and signatures — plus the conformance suite a second implementation can test against.</span></a>
+      </li>
+      <li>
+        <a href="security.html">The security model<span class="who">security.html</span>
+          <span>Tiers, consent, trust, the hardening that resolution and dispatch apply — and what none of it defends against.</span></a>
+      </li>
+      <li>
+        <a href="https://github.com/thatwasyahya/mURL/tree/main/docs">Engineering docs<span class="who">github.com/…/docs</span>
+          <span>Why this exists, architecture, the threat model and its sixteen threats, the trust model, OS integration, the daemon, stability and roadmap.</span></a>
+      </li>
+      <li>
+        <a href="https://github.com/thatwasyahya/mURL">The repository<span class="who">github.com/thatwasyahya/mURL</span>
+          <span>Source, tests, fuzz targets, conformance vectors, and issues.</span></a>
+      </li>
+    </ul>
+  </div>
+</section>
 
-  <ul class="linklist">
-    <li>
-      <a href="spec.html">The specification</a>
-      <span>Grammar, manifest format, resolution, canonical form and signatures — plus the conformance suite a second implementation can test against.</span>
-    </li>
-    <li>
-      <a href="security.html">The security model</a>
-      <span>Tiers, consent, trust, the hardening that resolution and dispatch apply — and what none of it defends against.</span>
-    </li>
-    <li>
-      <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/concept.md">Why this exists</a>
-      <span>The case for addressing destinations rather than resources, and an honest map of the neighbors that partly do it already.</span>
-    </li>
-    <li>
-      <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/architecture.md">Architecture</a>
-      <span>Crate layout, the resolution pipeline, and the reasoning behind each decision.</span>
-    </li>
-    <li>
-      <a href="https://github.com/thatwasyahya/mURL">The repository</a>
-      <span>Source, tests, fuzz targets, conformance vectors, and issues.</span>
-    </li>
-  </ul>
-
-</div>
 </main>
 
 <footer class="site-foot">
   <div class="wrap">
-    <p>mURL — experimental. Format v0.2, reference implementation 0.4.0.</p>
-    <p>
-      <a href="https://github.com/thatwasyahya/mURL">Repository</a> ·
-      <a href="spec.html">Specification</a> ·
-      <a href="security.html">Security</a> ·
-      <a href="https://github.com/thatwasyahya/mURL/blob/main/SECURITY.md">Report a vulnerability</a>
-    </p>
-    <p>Licensed under MIT OR Apache-2.0, at your option.</p>
+    <a class="brand" href="index.html"><span class="scheme">murl</span>://</a>
+    <p>Experimental. Not a standard. MIT OR Apache-2.0 ·
+      <a href="https://github.com/thatwasyahya/mURL">Source</a> ·
+      <a href="https://github.com/thatwasyahya/mURL/issues">Issues</a> ·
+      <a href="spec.html">Specification</a></p>
   </div>
 </footer>
 
+<script src="vendor/highlight.min.js"></script>
+<script src="vendor/motion.js"></script>
+<script src="site.js"></script>
+<script>
+// Hero resolution diagram: branches draw in, leaves slide in, staggered.
+// Without Motion, or with reduced motion, the SVG is simply complete.
+(function () {
+  "use strict";
+  var M = window.Motion;
+  if (!M || !M.animate) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var svg = document.getElementById("resolve-diagram");
+  if (!svg) return;
+  var root = svg.querySelector(".root");
+  var branches = Array.prototype.slice.call(svg.querySelectorAll(".branch"));
+  var leaves = Array.prototype.slice.call(svg.querySelectorAll(".leaf"));
+  var ease = [0.2, 0.7, 0.2, 1];
+  try {
+    branches.forEach(function (p) {
+      p.setAttribute("pathLength", "1");
+      p.style.strokeDasharray = "1";
+      p.style.strokeDashoffset = "1";
+    });
+    leaves.forEach(function (g) { g.style.opacity = "0"; });
+    root.style.opacity = "0";
+    M.animate(root, { opacity: [0, 1], transform: ["translateY(-6px)", "translateY(0px)"] }, { duration: 0.5, ease: ease });
+    branches.forEach(function (p, i) {
+      var a = M.animate(p, { strokeDashoffset: [1, 0] }, { duration: 0.75, delay: 0.35 + i * 0.11, ease: ease });
+      if (a && a.finished) a.finished.then(function () { p.style.strokeDasharray = ""; p.style.strokeDashoffset = ""; });
+    });
+    leaves.forEach(function (g, i) {
+      M.animate(g, { opacity: [0, 1], transform: ["translateX(-10px)", "translateX(0px)"] }, { duration: 0.5, delay: 0.7 + i * 0.11, ease: ease });
+    });
+  } catch (e) {
+    settle();
+  }
+  // Whatever happens to the animation, the diagram is complete by the time
+  // the choreography should have ended. Content never depends on motion.
+  setTimeout(settle, 2600);
+  function settle() {
+    branches.forEach(function (p) { p.style.strokeDasharray = ""; p.style.strokeDashoffset = ""; });
+    leaves.forEach(function (g) { g.style.opacity = ""; g.style.transform = ""; });
+    root.style.opacity = ""; root.style.transform = "";
+  }
+})();
+</script>
 </body>
 </html>

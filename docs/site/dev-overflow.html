@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>overflow diagnostic</title>
+<body style="margin:0">
+<iframe id="f" style="width:390px;height:844px;border:0"></iframe>
+<pre id="out">pending</pre>
+<script>
+  const page = new URLSearchParams(location.search).get("page") || "index.html";
+  const f = document.getElementById("f");
+  f.src = page;
+  f.addEventListener("load", () => {
+    setTimeout(() => {
+      const d = f.contentDocument;
+      const W = 390;
+      const lines = [];
+      lines.push("scrollWidth=" + d.documentElement.scrollWidth + " bodyScrollWidth=" + d.body.scrollWidth);
+      const all = Array.from(d.querySelectorAll("body *"));
+      const wide = [];
+      for (const el of all) {
+        const r = el.getBoundingClientRect();
+        if (r.right > W + 1 && r.width > 0) {
+          const cs = d.defaultView.getComputedStyle(el);
+          wide.push({
+            el: el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\s+/).join(".") : ""),
+            right: Math.round(r.right), width: Math.round(r.width),
+            minw: cs.minWidth, w: cs.width, ws: cs.whiteSpace, disp: cs.display,
+          });
+        }
+      }
+      // widest first, top 25
+      wide.sort((a, b) => b.right - a.right);
+      for (const w of wide.slice(0, 25)) lines.push(JSON.stringify(w));
+      document.getElementById("out").textContent = lines.join("\n");
+    }, 1500);
+  });
+</script>

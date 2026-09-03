@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>viewport frame</title>
+<body style="margin:0;background:#000">
+<iframe id="f" style="border:0;display:block"></iframe>
+<script>
+  // Chrome will not open a window narrower than ~500px, so a "mobile"
+  // screenshot taken with --window-size=390 is really a 500px layout cropped
+  // to 390. Rendering the page inside an iframe of the exact width gives an
+  // honest mobile layout.
+  const q = new URLSearchParams(location.search);
+  const f = document.getElementById("f");
+  f.style.width = (q.get("w") || 390) + "px";
+  f.style.height = (q.get("h") || 844) + "px";
+  const theme = q.get("theme");
+  f.src = (q.get("page") || "index.html") + (theme ? "?theme=" + theme : "");
+</script>

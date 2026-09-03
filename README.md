@@ -137,6 +137,8 @@ A manifest looks like this (full schema: [spec §5](spec/SPECIFICATION.md)):
 
 ## Documentation
 
+**Try it in your browser first:** the [playground](https://thatwasyahya.github.io/mURL/playground.html) turns a pasted list of resources into a validated manifest, checked by `murl-core` compiled to WebAssembly — the same code the CLI runs.
+
 | | |
 |---|---|
 | [docs/install.md](docs/install.md) | every way to install it, and which channels are actually published |

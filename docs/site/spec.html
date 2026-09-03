@@ -5,235 +5,363 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Specification — mURL</title>
 <meta name="description" content="The mURL v0.2 specification: what it covers, how to read it, the conformance vector suite, and why it is neither a standard nor a registered scheme.">
+<script>
+(function(){try{var q=new URLSearchParams(location.search).get("theme");var t=q||localStorage.getItem("murl-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
+</script>
 <link rel="stylesheet" href="style.css">
+<style>
+  /* keep the article from widening the page on narrow screens (tables, nowrap strips) */
+  .docs { grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 66rem) { .docs { grid-template-columns: 14rem minmax(0, var(--prose)); } }
+  .prose { min-width: 0; }
+  /* page head above the docs grid */
+  .doc-head { padding: clamp(3rem, 6vw, 5rem) 0 clamp(2rem, 4vw, 3rem); border-bottom: 1px solid var(--line); margin-bottom: clamp(2.5rem, 5vw, 4rem); }
+  .doc-head h1 { max-width: 20ch; }
+  .doc-head .lede { margin-bottom: 1.5rem; }
+  .doc-head .badges { margin: 0 0 1.5rem; padding: 0; list-style: none; }
+  .shape {
+    font-family: var(--font-mono); font-size: clamp(.95rem, .8rem + .7vw, 1.35rem); letter-spacing: -0.01em;
+    margin: 0; padding: 1rem 1.2rem; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md);
+    overflow-x: auto; white-space: nowrap; max-width: 100%; display: inline-block;
+  }
+  .shape .o { color: var(--fg-2); }
+  .shape-cap { font-family: var(--font-mono); font-size: .74rem; color: var(--fg-2); margin: .6rem 0 0; letter-spacing: .04em; }
+  /* section table */
+  .sec { font-family: var(--font-mono); font-weight: 600; color: var(--accent); white-space: nowrap; }
+  .sec-tbl td:first-child { white-space: nowrap; font-weight: 500; }
+  .sec-tbl td:first-child a { color: inherit; }
+  .sec-tbl td:first-child a:hover { color: var(--accent-strong); }
+  .sec-tbl td:last-child { min-width: 22rem; color: var(--fg-1); }
+  /* hand-coloured tree listing */
+  .tree .c { color: var(--fg-2); }
+  .tree .p { color: var(--accent); }
+  .tree .ok { color: var(--safe); }
+  .tree .no { color: var(--danger); }
+  /* conformance rules */
+  .rules { list-style: none; padding: 0; margin: 1.25rem 0 1.5rem; counter-reset: r; border-top: 1px solid var(--line); }
+  .rules li { counter-increment: r; max-width: none; margin: 0; padding: .9rem 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 2.2rem 1fr; gap: .6rem; }
+  .rules li::before { content: counter(r, decimal-leading-zero); font-family: var(--font-mono); font-size: .78rem; color: var(--accent); padding-top: .25rem; }
+  .rules li strong { color: var(--fg-0); }
+  .rules li p { margin: 0; color: var(--fg-1); }
+  /* stats strip */
+  .prose .stats { margin: 1.5rem 0 1.75rem; }
+  /* release semantics */
+  .rel-tbl td:first-child { font-family: var(--font-mono); font-size: .85rem; white-space: nowrap; }
+  .more-link { display: inline-flex; align-items: center; gap: .4rem; font-weight: 500; }
+  .more-link .icon { width: .95em; height: .95em; }
+  .toc .more { list-style: none; padding: 0; margin: 1.6rem 0 0; }
+  .toc .more li { margin: 0; }
+  .toc .more a { display: block; padding: .25rem 0; color: var(--fg-1); font-size: .82rem; }
+  .toc .more a:hover { color: var(--fg-0); text-decoration: none; }
+  .toc .more .icon { width: .85em; height: .85em; margin-left: .25em; color: var(--fg-2); }
+  .prose .linklist { margin-top: 1.75rem; }
+  .prose .linklist li { max-width: none; }
+  .prose .note ul { margin-bottom: 0; }
+</style>
 </head>
 <body>
 
 <a class="skip" href="#main">Skip to content</a>
-
 <header class="site-head">
   <div class="wrap">
-    <a class="brand" href="index.html">murl://</a>
-    <nav>
+    <a class="brand" href="index.html"><span class="mark">m</span><span class="scheme">murl</span>://</a>
+    <nav id="nav">
       <a href="index.html">Overview</a>
+      <a href="playground.html">Playground</a>
       <a href="spec.html" aria-current="page">Specification</a>
       <a href="security.html">Security</a>
-      <a href="https://github.com/thatwasyahya/mURL">GitHub</a>
+      <a href="https://github.com/thatwasyahya/mURL">GitHub <svg class="icon"><use href="vendor/icons.svg#i-arrow-up-right"/></svg></a>
     </nav>
+    <div class="actions">
+      <button class="icon-btn" type="button" data-theme-toggle aria-label="Toggle theme">
+        <svg class="icon icon-sun"><use href="vendor/icons.svg#i-sun"/></svg>
+        <svg class="icon icon-moon"><use href="vendor/icons.svg#i-moon"/></svg>
+      </button>
+      <button class="icon-btn nav-toggle" type="button" data-nav-toggle aria-label="Menu" aria-expanded="false" aria-controls="nav">
+        <svg class="icon"><use href="vendor/icons.svg#i-menu"/></svg>
+      </button>
+    </div>
   </div>
 </header>
 
 <main id="main">
 <div class="wrap">
 
-  <h1>The mURL specification</h1>
-
-  <p class="lede">
-    Version 0.2, an experimental draft. It is the normative reference for the
-    format and for resolution behavior, as implemented by the reference
-    implementation in this repository.
-  </p>
-
-  <ul class="badges">
-    <li class="badge warn">experimental draft</li>
-    <li class="badge">format v0.2</li>
-    <li class="badge">unregistered scheme</li>
-  </ul>
-
-  <p>
-    <a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md"><strong>Read SPECIFICATION.md on GitHub →</strong></a>
-  </p>
-
-  <div class="note">
-    <p><strong>Not a standard, and not on a track to becoming one yet.</strong>
-    Nothing in this document is an internet standard and it must not be
-    presented as one. The <code>murl</code> scheme and the
-    <code>application/murl+json</code> media type are both <em>unregistered</em>;
-    the intended path is provisional registration per RFC 7595 §5.2 once the
-    format stabilizes, which has not happened. Until then the specification
-    claims only the conventional <code>murl://</code> string.</p>
+  <div class="doc-head" data-reveal>
+    <p class="eyebrow">Specification</p>
+    <h1>The mURL <span class="display">specification</span>.</h1>
+    <p class="lede">
+      Version 0.2, an experimental draft. It is the normative reference for the
+      format and for resolution behavior, as implemented by the reference
+      implementation in this repository.
+    </p>
+    <ul class="badges">
+      <li class="badge warn">experimental draft</li>
+      <li class="badge">format v0.2</li>
+      <li class="badge">reference v0.5.0</li>
+      <li class="badge">unregistered scheme</li>
+    </ul>
+    <p class="murl-str shape" aria-label="The shape of an mURL: murl, colon, two slashes, authority, slash, name, optional at-version, optional query, optional selector"><span class="s">murl://</span><span class="a">authority</span><span class="n">/name</span><span class="o">[@version]</span><span class="o">[?query]</span><span class="f">[#selector]</span></p>
+    <p class="shape-cap">the shape of every mURL, from §3 of the grammar</p>
   </div>
 
-  <h2>What it covers</h2>
+  <div class="docs">
+    <aside class="toc" aria-label="On this page">
+      <p class="eyebrow">On this page</p>
+      <ol>
+        <li><a href="#covers">What it covers</a></li>
+        <li><a href="#conformance">The conformance suite</a></li>
+        <li><a href="#stability">What is stable, and what is not</a></li>
+        <li><a href="#registration">Registration considerations</a></li>
+      </ol>
+      <p class="eyebrow">Source</p>
+      <ul class="more">
+        <li><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md">SPECIFICATION.md<svg class="icon"><use href="vendor/icons.svg#i-arrow-up-right"/></svg></a></li>
+        <li><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/conformance">Conformance vectors<svg class="icon"><use href="vendor/icons.svg#i-arrow-up-right"/></svg></a></li>
+        <li><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/murl-manifest.schema.json">JSON Schema<svg class="icon"><use href="vendor/icons.svg#i-arrow-up-right"/></svg></a></li>
+        <li><a href="security.html">Security model</a></li>
+      </ul>
+    </aside>
 
-  <div class="table-scroll">
-  <table>
-    <thead>
-      <tr><th>Section</th><th>Contents</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#3-murl-syntax">§3</a> Syntax</td>
-        <td>The ABNF grammar for <code>murl://authority/name[@version][?query][#selector]</code>, the constraints every parser must enforce, and the canonical form that defines identity.</td>
-      </tr>
-      <tr>
-        <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#4-authorities-and-namespaces">§4</a> Authorities</td>
-        <td>The reserved <code>local</code> namespace and DNS-named authorities — who is allowed to define a name.</td>
-      </tr>
-      <tr>
-        <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#5-the-manifest">§5</a> Manifest</td>
-        <td>The envelope, top-level members, resource members, and relations between resources (<code>dependsOn</code>, ordering).</td>
-      </tr>
-      <tr>
-        <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#6-resolution">§6</a> Resolution</td>
-        <td>The pipeline, where manifests live (the well-known path), caching, identity binding, recursion, the normative limits, and selector failure semantics.</td>
-      </tr>
-      <tr>
-        <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#7-canonical-form-and-signatures">§7</a> Canonical form</td>
-        <td>MCF-1, the byte form a signature covers, and the ed25519 signature block.</td>
-      </tr>
-      <tr>
-        <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#8-security-model-summary-normative-detail-in-docssecuritymd">§8</a> Security</td>
-        <td>Principles, the three tiers, and the baseline policy — summarized here, detailed in <a href="security.html">the security model</a>.</td>
-      </tr>
-      <tr>
-        <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#9-versioning">§9</a> Versioning</td>
-        <td><code>murlVersion</code>, pinned versus <code>@latest</code> name versions, and the rollback window that <code>@latest</code> implies.</td>
-      </tr>
-      <tr>
-        <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#10-registration-considerations">§10–11</a></td>
-        <td>Registration status and the extension points: <code>custom:*</code> kinds, unknown-member handling, the reserved query component.</td>
-      </tr>
-    </tbody>
-  </table>
-  </div>
+    <article class="prose">
 
-  <h3>Changes from 0.1</h3>
+      <p>
+        <a class="more-link" href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md"><strong>Read SPECIFICATION.md on GitHub</strong> <svg class="icon"><use href="vendor/icons.svg#i-arrow-up-right"/></svg></a>
+      </p>
 
-  <p>
-    0.2 is additive over 0.1, and consumers must still accept manifests
-    declaring <code>"murlVersion": "0.1"</code>. Duplicate JSON members are now
-    explicitly invalid (§5.1); the optional <code>notBefore</code> member bounds
-    a manifest's validity window; selectors gained multiple items and the
-    <code>role=</code> / <code>tag=</code> forms; and the mutability contract for
-    <code>@latest</code> is spelled out rather than implied.
-  </p>
+      <div class="note warn">
+        <p><strong>Not a standard, and not on a track to becoming one yet.</strong>
+        Nothing in this document is an internet standard and it must not be
+        presented as one. The <code>murl</code> scheme and the
+        <code>application/murl+json</code> media type are both <em>unregistered</em>;
+        the intended path is provisional registration per RFC 7595 §5.2 once the
+        format stabilizes, which has not happened. Until then the specification
+        claims only the conventional <code>murl://</code> string.</p>
+      </div>
 
-  <h2>The conformance suite</h2>
+      <h2 id="covers">What it covers</h2>
 
-  <p>
-    A specification with one implementation is a description of that
-    implementation. The vector suite exists to make a <em>second</em>
-    implementation cheap to build and cheap to check: run the vectors, and you
-    know whether you agree with the reference implementation on the cases that
-    actually matter.
-  </p>
+      <div class="table-scroll">
+      <table class="sec-tbl">
+        <thead>
+          <tr><th>Section</th><th>Contents</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#3-murl-syntax"><span class="sec">§3</span> Syntax</a></td>
+            <td>The ABNF grammar for <code>murl://authority/name[@version][?query][#selector]</code>, the constraints every parser must enforce, and the canonical form that defines identity.</td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#4-authorities-and-namespaces"><span class="sec">§4</span> Authorities</a></td>
+            <td>The reserved <code>local</code> namespace and DNS-named authorities — who is allowed to define a name.</td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#5-the-manifest"><span class="sec">§5</span> Manifest</a></td>
+            <td>The envelope, top-level members, resource members, and relations between resources (<code>dependsOn</code>, ordering).</td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#6-resolution"><span class="sec">§6</span> Resolution</a></td>
+            <td>The pipeline, where manifests live (the well-known path), caching, identity binding, recursion, the normative limits, and selector failure semantics.</td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#7-canonical-form-and-signatures"><span class="sec">§7</span> Canonical form</a></td>
+            <td>MCF-1, the byte form a signature covers, and the ed25519 signature block.</td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#8-security-model-summary-normative-detail-in-docssecuritymd"><span class="sec">§8</span> Security</a></td>
+            <td>Principles, the three tiers — <span class="pill safe">safe</span> <span class="pill sensitive">sensitive</span> <span class="pill dangerous">dangerous</span> — and the baseline policy. Summarized here, detailed in <a href="security.html">the security model</a>.</td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#9-versioning"><span class="sec">§9</span> Versioning</a></td>
+            <td><code>murlVersion</code>, pinned versus <code>@latest</code> name versions, and the rollback window that <code>@latest</code> implies.</td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md#10-registration-considerations"><span class="sec">§10–11</span> Registration, extensions</a></td>
+            <td>Registration status and the extension points: <code>custom:*</code> kinds, unknown-member handling, the reserved query component.</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
 
-<pre><code>spec/conformance/
-  manifests/valid/*.murl.json     must parse AND validate with zero errors
-  manifests/invalid/*.murl.json   must fail parsing, OR produce ≥1 error
-  murls/valid.txt                 one mURL per line; each must parse
-  murls/invalid.txt               one mURL per line; each must be rejected</code></pre>
+      <h3>Changes from 0.1</h3>
 
-  <p>Four rules an implementation has to satisfy:</p>
+      <p>
+        0.2 is additive over 0.1, and consumers must still accept manifests
+        declaring <code>"murlVersion": "0.1"</code>. Duplicate JSON members are now
+        explicitly invalid (§5.1); the optional <code>notBefore</code> member bounds
+        a manifest's validity window; selectors gained multiple items and the
+        <code>role=</code> / <code>tag=</code> forms; and the mutability contract for
+        <code>@latest</code> is spelled out rather than implied.
+      </p>
 
-  <ol>
-    <li><strong>Valid manifests</strong> parse and produce no validation errors.
-      Warnings are allowed — several valid vectors deliberately carry unknown
-      members, which must warn and never fail.</li>
-    <li><strong>Invalid manifests</strong> are rejected, either at parse time or
-      by validation with at least one error. Which of the two is
-      implementation-defined; failing to reject at all is a conformance failure.</li>
-    <li><strong>Valid mURLs</strong> parse <em>and round-trip</em> — re-parsing
-      the canonical form yields an equal value. Some vectors are deliberately
-      non-canonical on input and must normalize.</li>
-    <li><strong>Invalid mURLs</strong> are rejected. No repair, no guessing.</li>
-  </ol>
+      <h2 id="conformance">The conformance suite</h2>
 
-  <p>
-    Validation is a static check: it never consults the clock or the network. A
-    vector whose <code>expires</code> is in the past is still <em>valid</em> if
-    its format and ordering are correct — time-of-use policy is a resolution
-    concern, tested separately.
-  </p>
+      <p>
+        A specification with one implementation is a description of that
+        implementation. The vector suite exists to make a <em>second</em>
+        implementation cheap to build and cheap to check: run the vectors, and you
+        know whether you agree with the reference implementation on the cases that
+        actually matter.
+      </p>
 
-<pre><code># against the reference implementation
+      <div class="stats" data-reveal>
+        <div class="stat"><div class="n tnum">153</div><div class="l">conformance vectors</div></div>
+        <div class="stat"><div class="n tnum">6</div><div class="l">rules to satisfy, the sixth optional</div></div>
+        <div class="stat"><div class="n tnum">2</div><div class="l">implementations: Rust reference, Python</div></div>
+        <div class="stat"><div class="n tnum">222</div><div class="l">tests in the reference</div></div>
+      </div>
+
+      <div class="codeblock tree">
+        <span class="lang">tree</span>
+        <button class="btn btn-sm btn-ghost copy" type="button" data-copy="conf-tree">copy</button>
+        <pre><code id="conf-tree" class="language-plaintext" data-highlighted="yes"><span class="p">spec/conformance/</span>
+  manifests/valid/*.murl.json     <span class="c">must parse <span class="ok">AND</span> validate with zero errors</span>
+  manifests/invalid/*.murl.json   <span class="c">must <span class="no">fail</span> parsing, OR produce ≥1 error</span>
+  murls/valid.txt                 <span class="c">one mURL per line; each must parse</span>
+  murls/invalid.txt               <span class="c">one mURL per line; each must be <span class="no">rejected</span></span>
+  canonical/*.input.json          <span class="c"><span class="ok">exact bytes</span> of *.canonical.json, or fail</span>
+  signatures/{valid,invalid}/     <span class="c">must <span class="ok">verify</span> / <span class="no">fail</span> — optional</span></code></pre>
+      </div>
+
+      <p>Six rules an implementation has to satisfy — the sixth only if it verifies signatures:</p>
+
+      <ol class="rules">
+        <li><p><strong>Valid manifests</strong> parse and produce no validation errors.
+          Warnings are allowed — several valid vectors deliberately carry unknown
+          members, which must warn and never fail.</p></li>
+        <li><p><strong>Invalid manifests</strong> are rejected, either at parse time or
+          by validation with at least one error. Which of the two is
+          implementation-defined; failing to reject at all is a conformance failure.</p></li>
+        <li><p><strong>Valid mURLs</strong> parse <em>and round-trip</em> — re-parsing
+          the canonical form yields an equal value. Some vectors are deliberately
+          non-canonical on input and must normalize.</p></li>
+        <li><p><strong>Invalid mURLs</strong> are rejected. No repair, no guessing.</p></li>
+        <li><p><strong>Canonical form</strong> — each input document must canonicalize to
+          the exact bytes of its <code>.canonical.json</code> twin. This rule exists because a
+          second implementation passed the first four while producing different bytes,
+          which would have made every signature it checked or produced incompatible.</p></li>
+        <li><p><strong>Signatures</strong> <em>(optional)</em> — vectors under
+          <code>signatures/valid</code> must verify and those under <code>signatures/invalid</code>
+          must fail, for the stated reason. One is deliberately hostile to the obvious shortcut:
+          an implementation that re-serializes its typed view before verifying drops an unknown
+          member and fails.</p></li>
+      </ol>
+
+      <div class="note">
+        <p><strong>Validation is a static check:</strong> it never consults the clock or the network. A
+        vector whose <code>expires</code> is in the past is still <em>valid</em> if
+        its format and ordering are correct — time-of-use policy is a resolution
+        concern, tested separately.</p>
+      </div>
+
+      <div class="codeblock">
+        <span class="lang">bash</span>
+        <button class="btn btn-sm btn-ghost copy" type="button" data-copy="conf-run">copy</button>
+        <pre><code id="conf-run" class="language-bash"># against the reference implementation
 cargo test -p murl-core --test conformance</code></pre>
+      </div>
 
-  <p>
-    Against your own implementation, point a harness at the four locations above
-    and apply the four rules. The reference harness is about a hundred lines and
-    is a fine template. Vectors are versioned with the specification: new ones
-    are added freely, existing ones change only when the spec does.
-  </p>
+      <p>
+        Against your own implementation, point a harness at the four locations above
+        and apply the four rules. The reference harness is about a hundred lines and
+        is a fine template. Vectors are versioned with the specification: new ones
+        are added freely, existing ones change only when the spec does.
+      </p>
 
-  <ul class="linklist">
-    <li>
-      <a href="https://github.com/thatwasyahya/mURL/blob/main/spec/conformance/README.md">Conformance suite README</a>
-      <span>The full rules, the layout, and how to contribute a vector.</span>
-    </li>
-    <li>
-      <a href="https://github.com/thatwasyahya/mURL/blob/main/spec/conformance">Browse the vectors</a>
-      <span>Filenames name the feature, or the rule the vector violates.</span>
-    </li>
-    <li>
-      <a href="https://github.com/thatwasyahya/mURL/blob/main/spec/murl-manifest.schema.json">JSON Schema</a>
-      <span>A machine-readable shape check for manifests. The specification, not the schema, is normative.</span>
-    </li>
-    <li>
-      <a href="https://github.com/thatwasyahya/mURL/blob/main/crates/murl-core/tests/conformance.rs">The reference harness</a>
-      <span>What running the suite looks like in practice.</span>
-    </li>
-  </ul>
+      <ul class="linklist" data-reveal>
+        <li>
+          <a href="https://github.com/thatwasyahya/mURL/blob/main/spec/conformance/README.md">Conformance suite README
+          <span>The full rules, the layout, and how to contribute a vector.</span></a>
+        </li>
+        <li>
+          <a href="https://github.com/thatwasyahya/mURL/blob/main/spec/conformance">Browse the vectors
+          <span>Filenames name the feature, or the rule the vector violates.</span></a>
+        </li>
+        <li>
+          <a href="https://github.com/thatwasyahya/mURL/blob/main/spec/murl-manifest.schema.json">JSON Schema
+          <span>A machine-readable shape check for manifests. The specification, not the schema, is normative.</span></a>
+        </li>
+        <li>
+          <a href="https://github.com/thatwasyahya/mURL/blob/main/crates/murl-core/tests/conformance.rs">The reference harness
+          <span>What running the suite looks like in practice.</span></a>
+        </li>
+      </ul>
 
-  <h2>What is stable, and what is not</h2>
+      <h2 id="stability">What is stable, and what is not</h2>
 
-  <p>
-    Nothing here is stable yet, and the project says so in the same place it
-    says everything else. The grammar, the manifest format, MCF-1 and the
-    signature block, and the well-known resolution path are all
-    <strong>experimental</strong>, intended to freeze at 1.0 — the format's
-    grammar specifically once a second implementation passes the conformance
-    suite. The canonical form freezes with the format for a mechanical reason:
-    changing it invalidates every signature already issued.
-  </p>
+      <p>
+        Nothing here is stable yet, and the project says so in the same place it
+        says everything else. The grammar, the manifest format, MCF-1 and the
+        signature block, and the well-known resolution path are all
+        <strong>experimental</strong>, intended to freeze at 1.0 — the format's
+        grammar specifically once a second implementation passes the conformance
+        suite. The canonical form freezes with the format for a mechanical reason:
+        changing it invalidates every signature already issued.
+      </p>
 
-  <p>
-    After 1.0, patch releases are editorial, minor releases are strictly
-    additive, and anything that would make an older consumer <em>unsafe</em>
-    rather than merely less capable is a major change. One exception is stated
-    up front: a change required to fix a vulnerability may break compatibility
-    in any release, because the alternative is a format whose defects are
-    permanent.
-  </p>
+      <p>
+        After 1.0, patch releases are editorial, minor releases are strictly
+        additive, and anything that would make an older consumer <em>unsafe</em>
+        rather than merely less capable is a major change. One exception is stated
+        up front: a change required to fix a vulnerability may break compatibility
+        in any release, because the alternative is a format whose defects are
+        permanent.
+      </p>
 
-  <p>
-    <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/stability.md">Full stability and compatibility policy →</a>
-  </p>
+      <div class="table-scroll">
+      <table class="rel-tbl">
+        <thead>
+          <tr><th>After 1.0</th><th>May contain</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>patch</td><td>Editorial changes only.</td></tr>
+          <tr><td>minor</td><td>Strictly additive changes; older consumers stay safe, merely less capable.</td></tr>
+          <tr><td>major</td><td>Anything that would make an older consumer <em>unsafe</em>.</td></tr>
+          <tr><td>any</td><td>A change required to fix a vulnerability may break compatibility.</td></tr>
+        </tbody>
+      </table>
+      </div>
 
-  <h2>Registration considerations</h2>
+      <p>
+        <a class="more-link" href="https://github.com/thatwasyahya/mURL/blob/main/docs/stability.md">Full stability and compatibility policy <svg class="icon"><use href="vendor/icons.svg#i-arrow-up-right"/></svg></a>
+      </p>
 
-  <ul>
-    <li>The <code>murl</code> scheme is unregistered. Provisional registration
-      per RFC 7595 §5.2 is the intended path once the format stabilizes;
-      the template is drafted in the repository but has not been submitted.</li>
-    <li><code>application/murl+json</code> is likewise unregistered; the
-      <code>+json</code> structured syntax suffix follows RFC 6839.</li>
-    <li>Unrelated single-URL libraries named "murl" exist on PyPI and
-      crates.io. The name collides; the scheme string itself has no known
-      conflicting deployment. Both are documented in
-      <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/prior-art.md">prior art</a>.</li>
-  </ul>
+      <h2 id="registration">Registration considerations</h2>
 
-  <p>
-    <a href="https://github.com/thatwasyahya/mURL/blob/main/spec/registration">The drafted registration templates →</a>
-  </p>
+      <ul>
+        <li>The <code>murl</code> scheme is unregistered. Provisional registration
+          per RFC 7595 §5.2 is the intended path once the format stabilizes;
+          the template is drafted in the repository but has not been submitted.</li>
+        <li><code>application/murl+json</code> is likewise unregistered; the
+          <code>+json</code> structured syntax suffix follows RFC 6839.</li>
+        <li>Unrelated single-URL libraries named "murl" exist on PyPI and
+          crates.io. The name collides; the scheme string itself has no known
+          conflicting deployment. Both are documented in
+          <a href="https://github.com/thatwasyahya/mURL/blob/main/docs/prior-art.md">prior art</a>.</li>
+      </ul>
+
+      <p>
+        <a class="more-link" href="https://github.com/thatwasyahya/mURL/blob/main/spec/registration">The drafted registration templates <svg class="icon"><use href="vendor/icons.svg#i-arrow-up-right"/></svg></a>
+      </p>
+
+    </article>
+  </div>
 
 </div>
 </main>
 
 <footer class="site-foot">
   <div class="wrap">
-    <p>mURL — experimental. Format v0.2, reference implementation 0.4.0.</p>
-    <p>
-      <a href="index.html">Overview</a> ·
-      <a href="https://github.com/thatwasyahya/mURL/blob/main/spec/SPECIFICATION.md">SPECIFICATION.md</a> ·
-      <a href="security.html">Security</a> ·
-      <a href="https://github.com/thatwasyahya/mURL">Repository</a>
-    </p>
-    <p>Licensed under MIT OR Apache-2.0, at your option.</p>
+    <a class="brand" href="index.html"><span class="scheme">murl</span>://</a>
+    <p>Experimental. Not a standard. MIT OR Apache-2.0 ·
+      <a href="https://github.com/thatwasyahya/mURL">Source</a> ·
+      <a href="https://github.com/thatwasyahya/mURL/issues">Issues</a> ·
+      <a href="spec.html">Specification</a></p>
   </div>
 </footer>
 
+<script src="vendor/highlight.min.js"></script>
+<script src="vendor/motion.js"></script>
+<script src="site.js"></script>
 </body>
 </html>

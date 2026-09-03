@@ -104,6 +104,12 @@ jobs:
           cargo build -p murl-wasm --target wasm32-unknown-unknown --release
           cp target/wasm32-unknown-unknown/release/murl_wasm.wasm docs/site/murl.wasm
           node crates/murl-wasm/tests/smoke.mjs docs/site/murl.wasm
+      - name: keep the local screenshot harness out of the deploy
+        # dev-*.html are same-origin helpers for tools/site/shoot.ps1 (an
+        # honest 390px iframe, and an overflow finder). Useful locally,
+        # meaningless to visitors.
+        run: rm -f docs/site/dev-*.html
+
 
 
       - uses: actions/upload-pages-artifact@v3

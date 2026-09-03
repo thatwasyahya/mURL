@@ -103,3 +103,23 @@ jobs:
       - run: cargo +nightly fuzz build
       - name: smoke-run each target
         run: bash fuzz/smoke.sh 30
+
+  wasm:
+    name: wasm (murl-core in the browser)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: cargo build -p murl-wasm --target wasm32-unknown-unknown --release
+      - name: the module instantiates with an empty import object and behaves
+        # Only the Pages deploy built this before, so a change that broke the
+        # browser build showed up as a failed deploy rather than a failed CI
+        # run. The smoke test is the same one the deploy runs.
+        run: node crates/murl-wasm/tests/smoke.mjs target/wasm32-unknown-unknown/release/murl_wasm.wasm
+      - run: cargo test -p murl-wasm

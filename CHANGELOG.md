@@ -6,6 +6,32 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+* **Browser playground** at <https://thatwasyahya.github.io/mURL/playground.html>:
+  paste the resources that make up one piece of work and get a validated
+  manifest back, with every kind inferred, every resource classified into its
+  tier, and every rule checked. The checking is done by `murl-core` itself,
+  compiled to WebAssembly (`crates/murl-wasm`), not by a second copy of the
+  rules written in JavaScript — the kinds, tiers and validation messages on
+  that page are the ones the CLI produces, by construction. Nothing typed
+  into it leaves the browser.
+* `murl-core` gained a default-on `keygen` feature. Generating a signing key
+  is the only thing in the crate that needs entropy; turning the feature off
+  drops `Keypair::generate` and lets the crate build for
+  `wasm32-unknown-unknown` with no JavaScript shim. Loading keys, signing and
+  verifying are unaffected.
+
+### Changed
+
+* The documentation site was redesigned: a real design system (self-hosted
+  IBM Plex and Instrument Serif, one accent, tier colours reserved for
+  tiers), dark and light themes, syntax-highlighted code, a table of contents
+  on the specification and security pages, and an animated resolution
+  diagram on the front page. Every library it uses is vendored and pinned
+  (`docs/site/vendor/VENDOR.md`); the site makes no request to a third-party
+  host at runtime.
+
 ## [0.5.0] — 2026-08-29
 
 The release where consent got a real surface, the format got a second
