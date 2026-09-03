@@ -23,11 +23,18 @@ code, and diffed against what was published.
 * **Scoop** - published at
   [thatwasyahya/scoop-murl](https://github.com/thatwasyahya/scoop-murl):
   `scoop bucket add murl https://github.com/thatwasyahya/scoop-murl`.
-* **winget** - manifests validated against the v1.6.0 schemas by
-  `packaging/winget/validate.py` and pushed to the `murl-0.5.0` branch of
-  the winget-pkgs fork. Opening the pull request needs a token with
-  permission on third-party repositories, so it is the one remaining manual
-  step: https://github.com/microsoft/winget-pkgs/compare/master...thatwasyahya:winget-pkgs:murl-0.5.0?expand=1
+* **winget** - submitted as
+  [PR #428273](https://github.com/microsoft/winget-pkgs/pull/428273); the
+  whole Azure pipeline is green, including Installers Scan and the
+  31-minute Installation Validation that actually installs the package on
+  Windows. Awaiting maintainer review, which is a queue, not a blocker.
+
+  Worth remembering for next time: the first submission failed
+   because  was at the
+  manifest root. The published JSON schema allows that; the packages that
+  merge put it inside the  entry.  checks the
+  schema, so it could not have caught this - comparing against a merged
+  manifest of the same shape did.
 * **Nix** - flake written, not submitted to nixpkgs.
 
 ## What is here
