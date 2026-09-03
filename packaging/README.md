@@ -30,11 +30,11 @@ code, and diffed against what was published.
   Windows. Awaiting maintainer review, which is a queue, not a blocker.
 
   Worth remembering for next time: the first submission failed
-   because  was at the
-  manifest root. The published JSON schema allows that; the packages that
-  merge put it inside the  entry.  checks the
-  schema, so it could not have caught this - comparing against a merged
-  manifest of the same shape did.
+  `02. Manifest Validation` because `NestedInstallerFiles` was at
+  the manifest root. The published JSON schema allows that; the packages
+  that merge put it inside the `Installers` entry. `validate.py`
+  checks the schema, so it could not have caught this - what did was
+  comparing against a merged manifest of the same shape.
 * **Nix** - flake written, not submitted to nixpkgs.
 
 ## What is here
@@ -45,7 +45,7 @@ code, and diffed against what was published.
 | `scoop/murl.json` | Scoop bucket (Windows) | `murl.exe` | release archive, x86_64 only |
 | `aur/PKGBUILD` | AUR package `murl` (Arch Linux) | `murl`, `murl-daemon` | the git tag |
 | `nix/flake.nix` | Nix flake | `murl`, `murl-daemon` | the source tree |
-| `winget/*.yaml` | winget (template only) | `murl.exe` | release archive, x64 only |
+| `winget/*.yaml` | winget (submitted, PR #428273) | `murl.exe` | release archive, x64 only |
 | `macos/` | macOS `.app` bundle for scheme registration | `murl` | the source tree |
 
 Two asymmetries are deliberate and worth knowing before you edit anything:
