@@ -46,8 +46,8 @@ Accept: application/murl+json, application/json
 ```
 
 There are no cookies, no identifiers, no request body and nothing about your
-files or other resources. The `#part` and any `?…` query in the address are
-not sent. Like any web request, it shows that server your IP address, the
+files or other resources. The `?query` and `#selector` parts of the address
+are not sent. Like any web request, it shows that server your IP address, the
 time, the address you asked for and your mURL version. The host name also
 travels in the TLS handshake (SNI) and in the DNS lookup.
 

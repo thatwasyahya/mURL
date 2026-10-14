@@ -8,8 +8,9 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.5.1] — 2026-10-14
 
-A security release, found while writing down exactly what mURL sends over
-the network. Upgrade, especially on Windows.
+A security release. The issues below were found while writing down exactly
+what mURL sends over the network ([PRIVACY.md](PRIVACY.md)). Upgrade,
+especially on Windows.
 
 ### Security
 
@@ -34,16 +35,21 @@ the network. Upgrade, especially on Windows.
   (T-10). An AAAA record of `::ffff:10.0.0.1` passed the private-range
   filter and, on a dual-stack socket (Linux, macOS), reached `10.0.0.1`.
   All of `0.0.0.0/8` is refused too, not only `0.0.0.0`.
-* **A redirect is a failed fetch, not a manifest** (T-10). With redirects
-  off (the default) a `3xx` answer was read as if it were the manifest;
-  anything outside `2xx` is now an error. When redirects are turned on with
-  `limits.maxRedirects`, an https fetch can no longer be redirected to plain
-  http.
+* **Redirects never downgrade https to http** (T-10). Redirects are off by
+  default; when `limits.maxRedirects` in `config.json` turns them on, a
+  server could previously redirect an https fetch to plain http, where the
+  manifest can be read and altered in transit. Such a redirect now fails.
 * **rustls 0.23.45** ([RUSTSEC-2026-0285](https://rustsec.org/advisories/RUSTSEC-2026-0285)).
   The TLS library behind manifest fetches accepted some TLS 1.3 handshake
   messages in plaintext that must arrive encrypted. The handshake is still
   authenticated, so this could not be used to alter a fetch; RFC 8446
   requires refusing such a connection, and rustls now does.
+
+### Fixed
+
+* A redirect is a failed fetch, not a manifest. With redirects off (the
+  default) a `3xx` answer was read as if it were the manifest; anything
+  outside `2xx` is now an error.
 
 ### Added
 
