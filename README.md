@@ -5,7 +5,7 @@
 [![CI](https://github.com/thatwasyahya/mURL/actions/workflows/ci.yml/badge.svg)](https://github.com/thatwasyahya/mURL/actions/workflows/ci.yml)
 [![docs](https://img.shields.io/badge/docs-thatwasyahya.github.io%2FmURL-0e7a5f)](https://thatwasyahya.github.io/mURL/)
 [![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](LICENSE-MIT)
-[![conformance](https://img.shields.io/badge/conformance-153%20vectors%20%C2%B7%202%20implementations-0e7a5f)](spec/conformance/)
+[![conformance](https://img.shields.io/badge/conformance-155%20vectors%20%C2%B7%202%20implementations-0e7a5f)](spec/conformance/)
 
 ```bash
 brew tap thatwasyahya/murl && brew install murl    # macOS, Linux
@@ -146,6 +146,7 @@ A manifest looks like this (full schema: [spec §5](spec/SPECIFICATION.md)):
 | [spec/SPECIFICATION.md](spec/SPECIFICATION.md) | **the normative v0.1 specification** |
 | [docs/architecture.md](docs/architecture.md) | crate layout, pipeline, decisions & reasons |
 | [docs/security.md](docs/security.md) · [docs/threat-model.md](docs/threat-model.md) | the security model and the 16 threats it answers |
+| [PRIVACY.md](PRIVACY.md) | what mURL sends over the network, to whom and when, and what it keeps on your computer |
 | [docs/trust-model.md](docs/trust-model.md) | signatures, pinning, and why not PKI |
 | [docs/resolution.md](docs/resolution.md) · [docs/resource-types.md](docs/resource-types.md) | how names resolve; the kind registry |
 | [docs/os-integration.md](docs/os-integration.md) | Linux, Windows, and macOS registration |
