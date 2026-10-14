@@ -332,7 +332,10 @@ fn approval_count_mismatch_is_an_error() {
 
 /// Adversarial-review hardening: `Path::join` replaces the base on an
 /// absolute argument, so `~//etc/passwd` used to expand to `/etc/passwd`
-/// while the plan displayed a path under the home directory.
+/// while the plan displayed a path under the home directory (and
+/// `~//host/share` to a UNC path on Windows). Since v0.5.1 the validator
+/// refuses the manifest before anything is planned; `expand_path` refusing
+/// it again is covered by its own unit test.
 #[test]
 fn tilde_paths_cannot_escape_the_home_directory() {
     let env = Env::new("d-tilde");
@@ -344,22 +347,14 @@ fn tilde_paths_cannot_escape_the_home_directory() {
         ]),
     );
     env.add_local("murl://local/p", &bytes(&m));
-    let r = resolve(&env, "murl://local/p");
-
-    let launcher = RecordingLauncher::default();
-    let approvals = vec![Approval::Approved; 2];
-    let report = execute(&r, &approvals, &opener(), &launcher, &env.limits).unwrap();
-
-    let escape = &report.outcomes[0];
-    assert_eq!(escape.status, OutcomeStatus::Failed, "{escape:?}");
+    let err = env
+        .resolver(None)
+        .resolve(&Murl::parse("murl://local/p").unwrap())
+        .unwrap_err();
     assert!(
-        escape.detail.as_deref().unwrap_or("").contains("escape"),
-        "{escape:?}"
+        matches!(err, murl_core::error::Error::Validation(_)),
+        "{err}"
     );
-    // Nothing under /etc was ever handed to a launcher.
-    for (argv, _) in launcher.launched.borrow().iter() {
-        assert!(!argv.iter().any(|a| a.contains("/etc/passwd")), "{argv:?}");
-    }
 }
 
 /// Adversarial-review hardening: an empty handler template would put the

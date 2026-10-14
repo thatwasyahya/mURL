@@ -861,9 +861,9 @@ fn validate_path_target(target: &str) -> std::result::Result<(), String> {
     if target.starts_with(is_sep) && target[1..].starts_with(is_sep) {
         return Err("network (UNC) paths are forbidden in path targets".into());
     }
-    if let Some(rest) = target.strip_prefix("~/") {
-        // A trailing separator (`~/projects/`) is the only empty segment
-        // allowed.
+    if let Some(rest) = target.strip_prefix("~/").filter(|r| !r.is_empty()) {
+        // `~/` itself and a trailing separator (`~/projects/`) are the only
+        // empty segments allowed.
         let rest = rest.strip_suffix(is_sep).unwrap_or(rest);
         if rest.split(is_sep).any(str::is_empty) {
             return Err("empty segments are forbidden in `~/` path targets".into());
@@ -1059,6 +1059,7 @@ mod tests {
             assert!(target_ok(kind, "/home/u/projects/"), "{kind}");
             assert!(target_ok(kind, "~/projects/x"), "{kind}");
             assert!(target_ok(kind, "~/projects/"), "{kind}");
+            assert!(target_ok(kind, "~/"), "{kind}");
             assert!(target_ok(kind, "C:/Users/u/x"), "{kind}");
             assert!(target_ok(kind, r"C:\\Users\\u\\x"), "{kind}");
             // UNC and device paths in every spelling Windows accepts.
@@ -1072,6 +1073,7 @@ mod tests {
                 r"~/\\\\host\\share",
                 r"~/x/\\\\host\\share",
                 "~//host/share",
+                "~//",
                 "~/a//b",
             ] {
                 assert!(!target_ok(kind, bad), "{kind} {bad} must be refused");

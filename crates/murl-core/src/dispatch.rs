@@ -485,6 +485,10 @@ mod tests {
             PathBuf::from("/home/u/p/x")
         );
         assert_eq!(cfg.expand_path("/abs").unwrap(), PathBuf::from("/abs"));
+        // The validator refuses these first; expansion must refuse them too.
+        assert!(cfg.expand_path("~//etc/passwd").is_err());
+        assert!(cfg.expand_path("~/p//x").is_err());
+        assert!(cfg.expand_path("~/../x").is_err());
         let no_home = OpenerConfig::default();
         assert!(no_home.expand_path("~/p").is_err());
     }

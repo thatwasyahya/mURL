@@ -716,7 +716,7 @@ def _target_path(target: str, where: str, report: Report) -> None:
     if re.match(r"\A[\\/]{2}", target):
         report.error(f"{where}: network (UNC) path target {target!r} is forbidden")
         return
-    if target.startswith("~/"):
+    if target.startswith("~/") and target != "~/":
         # Expansion appends each segment to the home directory; an empty one
         # lets the next segment start a UNC path. A trailing separator is fine.
         rest = re.sub(r"[\\/]\Z", "", target[2:])

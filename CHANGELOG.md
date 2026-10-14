@@ -39,6 +39,11 @@ the network. Upgrade, especially on Windows.
   anything outside `2xx` is now an error. When redirects are turned on with
   `limits.maxRedirects`, an https fetch can no longer be redirected to plain
   http.
+* **rustls 0.23.45** ([RUSTSEC-2026-0285](https://rustsec.org/advisories/RUSTSEC-2026-0285)).
+  The TLS library behind manifest fetches accepted some TLS 1.3 handshake
+  messages in plaintext that must arrive encrypted. The handshake is still
+  authenticated, so this could not be used to alter a fetch; RFC 8446
+  requires refusing such a connection, and rustls now does.
 
 ### Added
 

@@ -45,6 +45,8 @@ SCHEMA_CANNOT_CATCH = {
     "userinfo-in-target.murl.json": "per-kind target syntax",
     "relative-path-target.murl.json": "per-kind target syntax",
     "path-traversal-target.murl.json": "per-kind target syntax",
+    "unc-path-target.murl.json": "per-kind target syntax",
+    "home-path-unc-segment.murl.json": "per-kind target syntax",
     "nested-murl-bad-target.murl.json": "per-kind target syntax",
     "control-char-in-label.murl.json": "control characters in strings",
     "id-with-selector.murl.json": "mURL grammar inside a string field",
