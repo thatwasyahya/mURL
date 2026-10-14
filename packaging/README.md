@@ -67,7 +67,7 @@ Two asymmetries are deliberate and worth knowing before you edit anything:
 
 ### Everywhere: the version
 
-These files hardcode `0.5.0` / `v0.4.0` in URLs, `extract_dir`, and the
+These files hardcode `0.5.1` / `v0.4.0` in URLs, `extract_dir`, and the
 winget `RelativeFilePath`. Bumping a release means bumping it in:
 
 `homebrew/murl.rb` (`version`, four URLs) · `scoop/murl.json` (`version`,

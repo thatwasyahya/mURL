@@ -19,15 +19,15 @@
         "Only x86_64 is published. Scoop's 'arm64' architecture is omitted",
         "rather than pointed at an archive that does not exist."
     ],
-    "version": "0.5.0",
+    "version": "0.5.1",
     "description": "Resolve one murl:// name to a whole set of resources, under consent. Experimental.",
     "homepage": "https://github.com/thatwasyahya/mURL",
     "license": "MIT|Apache-2.0",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/thatwasyahya/mURL/releases/download/v0.5.0/murl-v0.5.0-x86_64-pc-windows-msvc.zip",
-            "hash": "4d626ccbbd79614185035c9bede7e2bb62c8165999b53d1eb2530f6a527d0d9b",
-            "extract_dir": "murl-v0.5.0-x86_64-pc-windows-msvc"
+            "url": "https://github.com/thatwasyahya/mURL/releases/download/v0.5.1/murl-v0.5.1-x86_64-pc-windows-msvc.zip",
+            "hash": "9ddee5e796c3b84e183633fc969cb542cc2d5db3077f571b653a69029cc7cf1c",
+            "extract_dir": "murl-v0.5.1-x86_64-pc-windows-msvc"
         }
     },
     "bin": "murl.exe",
