@@ -224,7 +224,12 @@ Target validation per kind (MUST):
 * `file`, `dir`, `terminal` — an absolute path (`/…` or `X:\…`/`X:/…`) or a
   `~`/`~/…` path. Dot segments (`.`/`..`) are forbidden. Relative paths are
   forbidden — there is no "relative to what?" answer that survives
-  OS-handler activation.
+  OS-handler activation. Network paths are forbidden: a target MUST NOT
+  begin with two separators (`/` and `\` in any combination, e.g.
+  `//host/share`, `\\host\share`, `/\host`), which Windows reads as a UNC or
+  device path, and a `~/…` target MUST NOT contain an empty segment (one
+  trailing separator is allowed). Checking that such a path exists already
+  connects to the host it names.
 * `murl` — a valid mURL. A selector on a nested mURL has no defined
   semantics and MUST be ignored with a warning.
 * `ssh` — `ssh://[user@]host[:port]`. Userinfo is permitted **only** for

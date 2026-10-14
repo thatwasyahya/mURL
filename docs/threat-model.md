@@ -42,7 +42,12 @@ labels shown to users, relative/traversal paths, `file://` tricks.
 **Defenses**: validator rejects control characters everywhere, relative
 paths, dot segments, non-https web targets, userinfo in targets; dispatch is
 argv-only with single-element substitution — there is no shell to inject
-into; labels are printed, never evaluated.
+into; labels are printed, never evaluated. Path targets may not be network
+paths: no two leading separators (`//host/share`, `/\host`, `\\host`, which
+Windows reads as UNC) and no empty segment in a `~/` path, because checking
+that such a target exists already connects to the host it names and may
+offer it the user's Windows credentials (closed in v0.5.1; before that,
+`//host/share` and `/\host\share` passed).
 
 ### T-4 · "Just a file" that executes ✅
 
@@ -106,9 +111,15 @@ integrity pins for nested manifests; pinned versions cached immutably.
 a clicked link into a request inside the victim's network.
 
 **Defenses**: DNS-time address filtering — non-loopback authorities
-resolving only to private/link-local/loopback/CGNAT ranges are refused;
+resolving only to private/link-local/loopback/CGNAT ranges are refused,
+with IPv4-mapped IPv6 answers judged as the IPv4 address they carry;
 loopback plain-HTTP allowed solely for `localhost`/`127.0.0.1`/
-`*.localhost` authorities (development); zero redirects prevents bounce-out.
+`*.localhost` authorities (development), which may reach loopback
+addresses and nothing else; zero redirects by default prevents bounce-out,
+a `3xx` is a failed fetch, and redirects enabled in config never downgrade
+https to http. (v0.5.1 closed the mapped-address gap, made loopback names
+loopback-only — they could previously reach public addresses over plain
+http — and stopped reading a `3xx` body as a manifest.)
 
 ### T-11 · Signature forgery / trust confusion ✅
 

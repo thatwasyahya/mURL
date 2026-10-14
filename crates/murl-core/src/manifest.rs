@@ -848,7 +848,27 @@ fn validate_web_target(target: &str) -> std::result::Result<(), String> {
 /// Paths must be absolute (or `~`-rooted) and free of dot segments. There is
 /// no "relative to what?" answer that survives OS-handler activation, and
 /// `..` in a manifest is a traversal attempt, not a convenience.
+///
+/// Network paths are refused for the same reason `..` is. Windows reads two
+/// leading separators (`//host/share`, `/\host`, `\\host`) as a UNC path,
+/// so merely checking that such a target exists connects to a host the
+/// manifest chose, over SMB or WebDAV, and may sign in to it with the user's
+/// credentials. Hence no target may start with two separators, and a `~/`
+/// path may have no empty segment: expansion pushes each segment onto the
+/// home directory, and a segment that is itself a UNC path replaces it.
 fn validate_path_target(target: &str) -> std::result::Result<(), String> {
+    let is_sep = |c: char| c == '/' || c == '\\';
+    if target.starts_with(is_sep) && target[1..].starts_with(is_sep) {
+        return Err("network (UNC) paths are forbidden in path targets".into());
+    }
+    if let Some(rest) = target.strip_prefix("~/") {
+        // A trailing separator (`~/projects/`) is the only empty segment
+        // allowed.
+        let rest = rest.strip_suffix(is_sep).unwrap_or(rest);
+        if rest.split(is_sep).any(str::is_empty) {
+            return Err("empty segments are forbidden in `~/` path targets".into());
+        }
+    }
     let body = if target == "~" {
         return Ok(());
     } else if let Some(rest) = target.strip_prefix("~/") {
@@ -1030,6 +1050,33 @@ mod tests {
             r#"{{"id":"a","kind":"{kind}","target":"{target}"}}"#
         )));
         m.validate().is_valid()
+    }
+
+    #[test]
+    fn path_targets_refuse_network_paths() {
+        for kind in ["file", "dir", "terminal"] {
+            assert!(target_ok(kind, "/home/u/projects/x"), "{kind}");
+            assert!(target_ok(kind, "/home/u/projects/"), "{kind}");
+            assert!(target_ok(kind, "~/projects/x"), "{kind}");
+            assert!(target_ok(kind, "~/projects/"), "{kind}");
+            assert!(target_ok(kind, "C:/Users/u/x"), "{kind}");
+            assert!(target_ok(kind, r"C:\\Users\\u\\x"), "{kind}");
+            // UNC and device paths in every spelling Windows accepts.
+            for bad in [
+                "//host/share/report.pdf",
+                r"/\\host\\share\\report.pdf",
+                r"\\/host/share",
+                r"\\\\host\\share",
+                "//?/UNC/host/share",
+                "//./pipe/x",
+                r"~/\\\\host\\share",
+                r"~/x/\\\\host\\share",
+                "~//host/share",
+                "~/a//b",
+            ] {
+                assert!(!target_ok(kind, bad), "{kind} {bad} must be refused");
+            }
+        }
     }
 
     #[test]

@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "Network share",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "file",
+      "target": "//fileserver.example/share/report.pdf"
+    }
+  ]
+}
