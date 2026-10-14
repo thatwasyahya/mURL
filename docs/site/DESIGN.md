@@ -135,7 +135,7 @@ is missing, note it in your report.
 
 Keep the existing content's substance and its honesty: experimental, not a
 standard, an mURL is a name and never a container, three tiers decided
-locally, no shell ever. Facts to keep current: release **v0.5.0**, format
+locally, no shell ever. Facts to keep current: release **v0.5.1**, format
 **v0.2**, 222 tests, 153 conformance vectors, two implementations (Rust
 reference, Python), installs via `cargo install murl-cli`, `brew install
 thatwasyahya/murl/murl`, `scoop bucket add murl

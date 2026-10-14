@@ -6,8 +6,45 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-10-14
+
+A security release, found while writing down exactly what mURL sends over
+the network. Upgrade, especially on Windows.
+
+### Security
+
+* **Network paths are refused in `file`, `dir` and `terminal` targets**
+  (T-3). The validator rejected `\\host\share` but accepted
+  `//host/share/…`, `/\host\share` and `~/x/\\host\share`, all of which
+  Windows reads as UNC paths. Once the user approved such a resource,
+  merely checking that it existed made Windows connect to the host the
+  manifest named — over SMB, or WebDAV when the WebClient service runs —
+  and Windows may sign in to that host with the user's credentials. A path
+  target may no longer begin with two separators, and a `~/` target may
+  not contain an empty segment. The rule is in the specification, the
+  Python reference implementation and two new conformance vectors.
+* **Loopback names reach loopback addresses only** (T-10). `localhost`,
+  `127.0.0.1` and `*.localhost` are the authorities fetched over plain
+  http, and the address filter *added* loopback to what they could reach
+  rather than limiting them to it. A hosts-file entry or resolver answer
+  pointing `dev.localhost` at a public address therefore sent an
+  unencrypted request across the network. Such a name now resolves to
+  loopback or fails.
+* **IPv4-mapped IPv6 answers are judged by the IPv4 address they carry**
+  (T-10). An AAAA record of `::ffff:10.0.0.1` passed the private-range
+  filter and, on a dual-stack socket (Linux, macOS), reached `10.0.0.1`.
+  All of `0.0.0.0/8` is refused too, not only `0.0.0.0`.
+* **A redirect is a failed fetch, not a manifest** (T-10). With redirects
+  off (the default) a `3xx` answer was read as if it were the manifest;
+  anything outside `2xx` is now an error. When redirects are turned on with
+  `limits.maxRedirects`, an https fetch can no longer be redirected to plain
+  http.
+
 ### Added
 
+* **[PRIVACY.md](PRIVACY.md)**: what mURL sends, to whom and when (no
+  telemetry, no server of its own), what it hands to other programs, and
+  what it keeps on your computer.
 * **Browser playground** at <https://thatwasyahya.github.io/mURL/playground.html>:
   paste the resources that make up one piece of work and get a validated
   manifest back, with every kind inferred, every resource classified into its

@@ -1,6 +1,6 @@
 # Installing mURL
 
-> mURL is **experimental** (format v0.2, release v0.5.0). Installing it gets
+> mURL is **experimental** (format v0.2, release v0.5.1). Installing it gets
 > you a working reference implementation of a proposed primitive — not a
 > standard, and not something with a compatibility promise yet. See
 > [stability.md](stability.md) for which surfaces carry which label.
@@ -38,10 +38,10 @@ worse than a short one:
 The shortest path if you have a Rust toolchain (1.75 or newer):
 
 ```bash
-cargo install --git https://github.com/thatwasyahya/mURL --tag v0.5.0 murl-cli
+cargo install --git https://github.com/thatwasyahya/mURL --tag v0.5.1 murl-cli
 
 # optional, and only if you want the resident consent surface:
-cargo install --git https://github.com/thatwasyahya/mURL --tag v0.5.0 murl-daemon
+cargo install --git https://github.com/thatwasyahya/mURL --tag v0.5.1 murl-daemon
 ```
 
 The crate name is `murl-cli`; the binary it installs is `murl`. Both land in
@@ -57,7 +57,7 @@ mURL is not on crates.io yet, so there is no plain `cargo install murl`.
 
 ```bash
 git clone https://github.com/thatwasyahya/mURL && cd mURL
-git checkout v0.5.0
+git checkout v0.5.1
 cargo build --release
 ```
 
@@ -82,9 +82,9 @@ targets:
 
 | Platform | Archive |
 |---|---|
-| Linux x86_64 | `murl-v0.5.0-x86_64-unknown-linux-gnu.tar.gz` |
-| macOS Apple silicon | `murl-v0.5.0-aarch64-apple-darwin.tar.gz` |
-| Windows x86_64 | `murl-v0.5.0-x86_64-pc-windows-msvc.zip` |
+| Linux x86_64 | `murl-v0.5.1-x86_64-unknown-linux-gnu.tar.gz` |
+| macOS Apple silicon | `murl-v0.5.1-aarch64-apple-darwin.tar.gz` |
+| Windows x86_64 | `murl-v0.5.1-x86_64-pc-windows-msvc.zip` |
 
 Intel macOS, Arm64 Windows and Arm64 Linux are **not** built. Use `cargo
 install` or a source build there.
@@ -93,8 +93,8 @@ The archives contain `murl` only — not `murl-daemon`. If you want the daemon,
 build it.
 
 ```bash
-tar xzf murl-v0.5.0-x86_64-unknown-linux-gnu.tar.gz
-install -m0755 murl-v0.5.0-x86_64-unknown-linux-gnu/murl ~/.local/bin/murl
+tar xzf murl-v0.5.1-x86_64-unknown-linux-gnu.tar.gz
+install -m0755 murl-v0.5.1-x86_64-unknown-linux-gnu/murl ~/.local/bin/murl
 ```
 
 ### Verifying a download
@@ -103,21 +103,21 @@ Every archive has a `.sha256` file beside it. On Linux and macOS the file is
 in `shasum` format, so it can be checked directly:
 
 ```bash
-base=https://github.com/thatwasyahya/mURL/releases/download/v0.5.0
-name=murl-v0.5.0-x86_64-unknown-linux-gnu.tar.gz
+base=https://github.com/thatwasyahya/mURL/releases/download/v0.5.1
+name=murl-v0.5.1-x86_64-unknown-linux-gnu.tar.gz
 
 curl -LO "$base/$name"
 curl -LO "$base/$name.sha256"
 
 shasum -a 256 -c "$name.sha256"
-# murl-v0.5.0-x86_64-unknown-linux-gnu.tar.gz: OK
+# murl-v0.5.1-x86_64-unknown-linux-gnu.tar.gz: OK
 ```
 
 The Windows `.sha256` holds the bare uppercase digest with no filename, so
 compare it yourself:
 
 ```powershell
-$file = "murl-v0.5.0-x86_64-pc-windows-msvc.zip"
+$file = "murl-v0.5.1-x86_64-pc-windows-msvc.zip"
 $want = (Get-Content "$file.sha256").Trim()
 $got  = (Get-FileHash $file -Algorithm SHA256).Hash
 if ($got -eq $want) { "OK" } else { "MISMATCH" }
