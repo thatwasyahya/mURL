@@ -6,6 +6,83 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-10-16
+
+A security release that closes the issues left open after 0.5.1, found by
+checking every claim in [PRIVACY.md](PRIVACY.md) against the code. Upgrade,
+especially on Windows: with 0.5.1 there, a manifest resource that looks
+like a web link can make Windows connect to a network share chosen by the
+manifest.
+
+### Security
+
+* **On Windows, an `https` target could open a network share** (T-19).
+  `explorer.exe`, the opener mURL uses on Windows, splits an unquoted
+  command line at commas and obeys its own switches there. A target such
+  as `https://a.example/x,/root,\\host\share` passed validation, was
+  classified SAFE and shown as a web link, and once approved made Explorer
+  open `\\host\share` instead of the browser: an SMB connection to a host
+  the manifest chose, which Windows may sign in to with the user's
+  credentials. Reproduced on Windows 11 with a 0.5.1 build. Each argument
+  now reaches Explorer as one quoted token, which it takes whole; the
+  browser receives the URL unchanged, commas included. A target containing
+  `"`, which could end the quoting, is refused at launch. A `mailto:` body
+  could carry the same text.
+* **A remote manifest could make mURL send a request to a port on your
+  computer** (T-10). Nested mURLs are resolved before the consent prompt,
+  and a manifest fetched over the network could nest
+  `murl://localhost:PORT/…`, which sent a plain-http GET to that port.
+* **A remote manifest could learn which local names you have** (T-10). A
+  manifest that nested `murl://local/<name>` and then an mURL on its own
+  server found out whether the name existed: a missing name ended
+  resolution, an existing one let the second request through.
+
+  Both are closed by one rule, now in the specification (§6.5): a manifest
+  may nest only names at least as far from your computer as itself. One
+  fetched over the network may nest only network names; one served from
+  loopback may nest loopback and network names but no `murl://local/…`;
+  the local store and files you open may nest anything. A violation is
+  refused before anything is looked up or fetched, so it fails the same
+  way whether or not the local name exists.
+* **`~/Z:\x` opened `Z:\x` on Windows** (T-3), while the prompt showed a
+  path under your home directory. Expanding a `~/` path pushed each
+  segment onto the home directory, and a segment that starts with a drive
+  letter replaces it. The validator now refuses a drive letter at the
+  start of any segment of a `~/` path, and expansion pushes plain names
+  only. The rule is in the specification, the Python reference
+  implementation and a new conformance vector.
+* **`custom:` targets are validated** (T-3, T-5). Any string was accepted.
+  A target starting with `-` reached your registered handler as a
+  command-line option (`--install-extension=…` for an editor), and one
+  starting with two separators as a network path. Both are now refused.
+  `custom:` kinds are DANGEROUS, so they already needed a trusted manifest
+  and your consent.
+* **rustls 0.23.46** ([RUSTSEC-2026-0346](https://rustsec.org/advisories/RUSTSEC-2026-0346),
+  [-0347](https://rustsec.org/advisories/RUSTSEC-2026-0347),
+  [-0348](https://rustsec.org/advisories/RUSTSEC-2026-0348),
+  [-0349](https://rustsec.org/advisories/RUSTSEC-2026-0349)). None of the
+  four affects mURL as built: it installs no logger that could print
+  session secrets, uses no Encrypted Client Hello, does not enable brotli
+  certificate compression, and its `ring` crypto provider offers no
+  post-quantum key exchange to downgrade. The update keeps it that way if
+  any of those changes.
+
+### Fixed
+
+* `limits.maxRedirects = n` in `config.json` followed only n − 1 redirects,
+  because ureq gives up when its count reaches the configured number. It
+  now follows exactly n. Redirects stay off by default.
+* A `file`, `dir` or `terminal` target of `~/` or with a trailing
+  separator, such as `~/projects/`, passed validation but failed at
+  dispatch with "empty path segment". It now opens.
+
+### Changed
+
+* Three new invalid conformance vectors (`home-path-drive-letter`,
+  `custom-option-injection`, `custom-unc-target`), 158 in all. The format
+  version stays 0.2: these are vulnerability fixes, which
+  [docs/stability.md](docs/stability.md) allows in any release.
+
 ## [0.5.1] — 2026-10-14
 
 A security release. The issues below were found while writing down exactly

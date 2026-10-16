@@ -15,7 +15,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 # Without `keygen`: no entropy needed, so no wasm-bindgen in the graph
 # and the module instantiates with an empty import object.
-murl-core = { path = "../murl-core", version = "0.5.1", default-features = false }
+murl-core = { path = "../murl-core", version = "0.5.2", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
