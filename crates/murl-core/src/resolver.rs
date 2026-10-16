@@ -28,7 +28,7 @@ use crate::fetch::{well_known_url, LocalStore, RemoteFetcher};
 use crate::kind::Kind;
 use crate::limits::Limits;
 use crate::manifest::{Manifest, ResourceDoc};
-use crate::murl::{Murl, SelectorItem, VersionTag};
+use crate::murl::{Authority, Murl, SelectorItem, VersionTag};
 use crate::policy::{classify, Decision, EvalContext, Policy, Tier};
 use crate::time::{parse_rfc3339_utc, Clock};
 use crate::trust::{check_integrity, verify_manifest, TrustStatus, TrustStore};
@@ -158,6 +158,52 @@ impl Resolution {
                 "decision": pr.decision,
             })).collect::<Vec<_>>(),
         })
+    }
+}
+
+/// How far from this machine a manifest, or a name, lives (spec §6.5).
+///
+/// A manifest may nest only names at least as far away as itself, because
+/// nesting runs before the consent prompt. A manifest fetched over the
+/// network that nests `murl://localhost:PORT/…` makes mURL send a plain-http
+/// request to that port; one that nests `murl://local/<name>` tells its
+/// server whether the name exists, since a missing name ends resolution
+/// before the next fetch. A loopback server stands to the local store as
+/// the network stands to both.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Locality {
+    /// The local name store, or a file the user opened.
+    ThisDevice,
+    /// `localhost`, `127.0.0.1`, `*.localhost`.
+    Loopback,
+    Network,
+}
+
+impl Locality {
+    fn of(authority: &Authority) -> Locality {
+        if authority.is_local() {
+            Locality::ThisDevice
+        } else if authority.is_loopback() {
+            Locality::Loopback
+        } else {
+            Locality::Network
+        }
+    }
+
+    fn of_source(origin: &Origin, murl: Option<&Murl>) -> Locality {
+        match (origin, murl) {
+            (Origin::LocalStore(_) | Origin::LocalFile(_), _) => Locality::ThisDevice,
+            (Origin::Remote { .. }, Some(m)) => Locality::of(&m.authority),
+            (Origin::Remote { .. }, None) => Locality::Network,
+        }
+    }
+
+    fn describe(self) -> &'static str {
+        match self {
+            Locality::ThisDevice => "this machine",
+            Locality::Loopback => "a loopback server",
+            Locality::Network => "the network",
+        }
     }
 }
 
@@ -477,6 +523,7 @@ impl<'a> Resolver<'a> {
             None => false,
         };
 
+        let source = Locality::of_source(&origin, murl);
         let node_index = st.nodes.len();
         st.nodes.push(ResolvedNode {
             identity: murl.map(Murl::identity),
@@ -500,6 +547,16 @@ impl<'a> Resolver<'a> {
             if let Kind::Murl = kind {
                 let child = Murl::parse(&r.target)
                     .map_err(|e| Error::Validation(format!("nested mURL: {e}")))?;
+                // Checked before anything is looked up or fetched: the
+                // lookup or the request is itself what must not happen.
+                if Locality::of(&child.authority) < source {
+                    return Err(Error::Resolution(format!(
+                        "{label} comes from {} and nests `{}`, which is on this machine; \
+                         a manifest may nest only names at least as far away as itself",
+                        source.describe(),
+                        child.identity()
+                    )));
+                }
                 if child.selector.is_some() {
                     st.warnings.push(format!(
                         "{label}: selector on nested mURL `{}` is ignored",

@@ -61,11 +61,20 @@ project-x
                    └─ chat   https  ┘ root_anchor = "team"
 ```
 
-Bookkeeping per splice: depth check (≤3), manifest count (≤8), identity
-pushed on the path stack (cycle ⇒ hard error), visited-set check (diamond ⇒
-skip + warn), optional integrity pin over the child's raw bytes,
-cross-authority warning, and every child resource counted against the
-64-resource ceiling and the (kind, target) dedup set.
+Bookkeeping per splice: locality check (below), depth check (≤3), manifest
+count (≤8), identity pushed on the path stack (cycle ⇒ hard error),
+visited-set check (diamond ⇒ skip + warn), optional integrity pin over the
+child's raw bytes, cross-authority warning, and every child resource
+counted against the 64-resource ceiling and the (kind, target) dedup set.
+
+Nesting never moves closer to the user's machine (spec §6.5). A manifest
+from the local store or a file you opened may nest anything; one served
+from a loopback authority may nest loopback and network names; one fetched
+over the network may nest only network names. Anything else is a hard
+error before the child is looked up, because nesting happens before the
+consent prompt: a remote manifest nesting `murl://localhost:8080/…` would
+make mURL send a request to that port, and one nesting `murl://local/…`
+would learn whether that name exists.
 
 `root_anchor` records which *root* resource each planned entry descends
 from — that's what `#selector` filters on, so `murl open murl://…/p#team`

@@ -90,6 +90,10 @@ accept.
   content (spec §6.4).
 * **Integrity pins**: nested manifests can be pinned by `sha256-…` over
   their raw bytes; mismatch is a hard stop.
+* **Nesting locality**: a manifest fetched over the network may nest only
+  network names, and one served from loopback no `murl://local/…` names
+  (spec §6.5), so a remote manifest can neither send a request to a port
+  on your machine nor probe your local store before you consent.
 * **Cache integrity**: cached manifests are content-hashed; corrupt entries
   are dropped, not used.
 
@@ -98,7 +102,13 @@ accept.
 * argv-only process creation; `{target}` substitution confined to a single
   element (a target containing `; rm -rf ~` remains one inert argument).
 * File/dir/terminal targets must be absolute (or `~`-rooted), dot-segment
-  free at validation time, and are existence-checked before launch.
+  free and free of network paths at validation time, and are
+  existence-checked before launch. A `~/` path is expanded one plain name
+  at a time, so no segment can replace the home directory.
+* On Windows the platform opener, `explorer.exe`, receives each target as
+  one quoted argument. Explorer splits an unquoted command line at commas
+  and obeys its own switches there, so `https://a.example/x,/root,\\host\s`
+  used to open the share instead of the browser.
 * Sequential, staggered launching bounds the blast radius of even an
   approved 64-resource plan.
 * `custom:*` kinds dispatch **only** through handlers the user registered

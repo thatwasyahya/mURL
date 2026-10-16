@@ -229,7 +229,9 @@ Target validation per kind (MUST):
   `//host/share`, `\\host\share`, `/\host`), which Windows reads as a UNC or
   device path, and a `~/…` target MUST NOT contain an empty segment (one
   trailing separator is allowed). Checking that such a path exists already
-  connects to the host it names.
+  connects to the host it names. No segment of a `~/…` target may begin
+  with a drive designator (a letter followed by `:`, e.g. `~/Z:\x`), which
+  on Windows replaces the home directory instead of extending it.
 * `murl` — a valid mURL. A selector on a nested mURL has no defined
   semantics and MUST be ignored with a warning.
 * `ssh` — `ssh://[user@]host[:port]`. Userinfo is permitted **only** for
@@ -244,9 +246,11 @@ Target validation per kind (MUST):
 * `mailto` — `mailto:addr[,addr…][?headers]` per RFC 6068. Header names
   MUST be one of `subject`, `body`, `cc`, `to`: a manifest may pre-fill a
   message but MUST NOT be able to add recipients the user will not see.
-* `custom:<name>` — free-form (charset/length rules only). Dispatched only
-  through a handler the user registered locally; unregistered custom kinds
-  never launch.
+* `custom:<name>` — free-form, except that a target MUST NOT begin with `-`
+  (it would read as a command-line option to the handler) or with two
+  separators (a network path, as for `file`). Dispatched only through a
+  handler the user registered locally; unregistered custom kinds never
+  launch.
 
 ### 5.4 Relations
 
@@ -331,6 +335,17 @@ never dispatched. Nested manifests are resolved with the same pipeline
   warning.
 * Crossing authorities (parent and child under different authorities) is
   permitted but MUST be surfaced as a warning.
+* **Nesting MUST NOT move closer to the user's machine.** Rank sources as
+  *this device* (the `local` store, or a file the user opened), *loopback*
+  (`localhost`, `127.0.0.1`, `*.localhost`) and *network* (any other
+  authority). A nested mURL whose authority ranks closer than the manifest
+  that names it — `murl://local/…` or a loopback name inside a manifest
+  fetched over the network, `murl://local/…` inside one served from
+  loopback — is a hard error, raised before the store is consulted or
+  anything is fetched. Nesting is resolved before consent: otherwise a
+  remote manifest could make the resolver send a plain-http request to a
+  port on the user's machine, or learn whether a local name exists from
+  whether resolution goes on to its next fetch.
 * An `integrity` pin on the container MUST be checked against the raw bytes
   of the nested manifest before parsing it.
 

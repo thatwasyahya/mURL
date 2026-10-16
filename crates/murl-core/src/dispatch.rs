@@ -12,7 +12,7 @@
 //!    forty browser tabs.
 
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -81,7 +81,9 @@ impl OpenerConfig {
     /// `/etc/passwd` — the consent prompt would show a path under the home
     /// directory while something else entirely was opened. The remainder is
     /// therefore joined segment by segment, and an empty or rooted
-    /// remainder is refused outright.
+    /// remainder is refused outright. `push` replaces the base for a
+    /// segment with a Windows drive prefix too (`Z:\x`, `Z:x`), so only a
+    /// segment made of plain names is pushed.
     fn expand_path(&self, target: &str) -> std::result::Result<PathBuf, String> {
         let Some(rest) = target.strip_prefix('~') else {
             return Ok(PathBuf::from(target));
@@ -97,7 +99,13 @@ impl OpenerConfig {
             // `~user/...` is not a form mURL defines.
             return Err(format!("`{target}` is not a `~` or `~/…` path"));
         };
+        // One trailing separator (`~/projects/`) is allowed, as in the
+        // validator; it adds no segment.
+        let rest = rest.strip_suffix('/').unwrap_or(rest);
         let mut path = home.clone();
+        if rest.is_empty() {
+            return Ok(path);
+        }
         for segment in rest.split('/') {
             if segment.is_empty() {
                 return Err(format!(
@@ -107,10 +115,47 @@ impl OpenerConfig {
             if segment == "." || segment == ".." {
                 return Err(format!("`{target}` contains a dot segment"));
             }
+            let plain = Path::new(segment)
+                .components()
+                .all(|c| matches!(c, Component::Normal(_)));
+            if !plain {
+                return Err(format!(
+                    "`{target}` has a segment that is not a plain name; it would escape the home directory"
+                ));
+            }
             path.push(segment);
         }
         Ok(path)
     }
+}
+
+/// True when `program` is Windows Explorer, however it is spelled in a
+/// handler (`explorer.exe`, `explorer`, a full path).
+pub fn is_explorer(program: &str) -> bool {
+    let name = program.rsplit(['/', '\\']).next().unwrap_or(program);
+    name.eq_ignore_ascii_case("explorer.exe") || name.eq_ignore_ascii_case("explorer")
+}
+
+/// The command-line text that hands `arg` to explorer.exe as one argument.
+///
+/// Explorer does not split its command line the way other programs do. It
+/// splits it at commas and acts on its own switches wherever they appear,
+/// so given `https://a.example/x,/root,\\host\share` it opens the share,
+/// not the browser: a target that looks like a web link reaches a network
+/// path instead, connecting to the host it names. A quoted argument is taken
+/// whole, commas included, and the URL reaches the browser unchanged.
+///
+/// Explorer's quotes simply toggle (`"C:\dir\"` opens `C:\dir\`; there is
+/// no backslash escaping), so the argument is wrapped as it is, and one
+/// containing a quote, which could close the quoting early, is refused. A
+/// quote is legal in neither a URI nor a Windows path.
+pub fn explorer_argument(arg: &str) -> std::result::Result<String, String> {
+    if arg.contains('"') {
+        return Err(format!(
+            "`{arg}` contains a double quote, which explorer.exe cannot be given safely"
+        ));
+    }
+    Ok(format!("\"{arg}\""))
 }
 
 /// Per-resource consent verdict, parallel to `Resolution::resources`.
@@ -485,12 +530,72 @@ mod tests {
             PathBuf::from("/home/u/p/x")
         );
         assert_eq!(cfg.expand_path("/abs").unwrap(), PathBuf::from("/abs"));
+        // A trailing separator is valid in a manifest, so it must dispatch.
+        assert_eq!(cfg.expand_path("~/").unwrap(), PathBuf::from("/home/u"));
+        assert_eq!(
+            cfg.expand_path("~/projects/").unwrap(),
+            PathBuf::from("/home/u/projects")
+        );
         // The validator refuses these first; expansion must refuse them too.
         assert!(cfg.expand_path("~//etc/passwd").is_err());
         assert!(cfg.expand_path("~/p//x").is_err());
         assert!(cfg.expand_path("~/../x").is_err());
         let no_home = OpenerConfig::default();
         assert!(no_home.expand_path("~/p").is_err());
+    }
+
+    /// On Windows a segment with a drive prefix replaces the home directory
+    /// when pushed: `~/Z:\x` would open `Z:\x`.
+    #[cfg(windows)]
+    #[test]
+    fn expand_path_refuses_drive_segments() {
+        let cfg = OpenerConfig {
+            home_dir: Some(PathBuf::from(r"C:\Users\u")),
+            ..OpenerConfig::default()
+        };
+        for bad in [r"~/Z:\x", "~/Z:x", "~/p/Z:", r"~/p\..\..\x"] {
+            assert!(cfg.expand_path(bad).is_err(), "{bad}");
+        }
+        assert_eq!(
+            cfg.expand_path(r"~/p\q").unwrap(),
+            PathBuf::from(r"C:\Users\u\p\q")
+        );
+    }
+
+    #[test]
+    fn explorer_detection() {
+        for program in [
+            "explorer.exe",
+            "EXPLORER.EXE",
+            "explorer",
+            r"C:\Windows\explorer.exe",
+            "C:/Windows/Explorer.exe",
+        ] {
+            assert!(is_explorer(program), "{program}");
+        }
+        for program in [
+            "xdg-open",
+            "open",
+            "explorer.exe.bak",
+            r"C:\tools\myexplorer.exe",
+        ] {
+            assert!(!is_explorer(program), "{program}");
+        }
+    }
+
+    #[test]
+    fn explorer_arguments_are_one_quoted_token() {
+        // The shape that made explorer open a share instead of the browser.
+        assert_eq!(
+            explorer_argument(r"https://a.example/x,/root,\\host\share").unwrap(),
+            r#""https://a.example/x,/root,\\host\share""#
+        );
+        // Explorer has no backslash escaping: a trailing one stays single.
+        assert_eq!(
+            explorer_argument(r"C:\Users\u\projects\").unwrap(),
+            r#""C:\Users\u\projects\""#
+        );
+        assert!(explorer_argument(r#"https://a.example/x",/root,\\host\share"#).is_err());
     }
 }
 

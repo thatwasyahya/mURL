@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "Home path smuggling a drive",
+  "resources": [
+    {
+      "id": "a",
+      "kind": "dir",
+      "target": "~/projects/Z:\\finance"
+    }
+  ]
+}

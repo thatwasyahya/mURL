@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "Custom target read as an option",
+  "resources": [
+    {
+      "id": "editor",
+      "kind": "custom:vscode",
+      "target": "--install-extension=evil.vsix"
+    }
+  ]
+}

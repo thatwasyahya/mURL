@@ -47,7 +47,12 @@ paths: no two leading separators (`//host/share`, `/\host`, `\\host`, which
 Windows reads as UNC) and no empty segment in a `~/` path, because checking
 that such a target exists already connects to the host it names and may
 offer it the user's Windows credentials (closed in v0.5.1; before that,
-`//host/share` and `/\host\share` passed).
+`//host/share` and `/\host\share` passed). No segment of a `~/` path may
+start with a drive letter either: on Windows `~/Z:\x` expanded to `Z:\x`
+while the prompt showed a path under the home directory (closed in v0.5.2;
+`~/` expansion now pushes plain names only). `custom:` targets may not
+start with `-`, which a handler would read as an option, or with two
+separators (v0.5.2; before that they were not checked at all).
 
 ### T-4 · "Just a file" that executes ✅
 
@@ -121,6 +126,14 @@ https to http. (v0.5.1 closed the mapped-address gap, made loopback names
 loopback-only — they could previously reach public addresses over plain
 http — and stopped reading a `3xx` body as a manifest.)
 
+Nested mURLs are resolved before consent, so they are part of this surface:
+a manifest fetched over the network may nest only network names, and one
+served from loopback no `murl://local/…` names (spec §6.5). Before v0.5.2 a
+remote manifest nesting `murl://localhost:PORT/…` sent a plain-http request
+to that port, and one nesting `murl://local/<name>` learned whether the name
+existed, because a missing name ended resolution before the next nested
+fetch reached the attacker's server.
+
 ### T-11 · Signature forgery / trust confusion ✅
 
 Forged signatures, key substitution with a stale keyId, alg-confusion,
@@ -176,6 +189,22 @@ protocol cannot carry (`--offline`, `--refresh`, `--skip`, the approval
 flags) make the CLI decline the daemon path rather than silently drop them,
 and `--daemon` turns that decline into an explicit error. Found by
 adversarial review, not by tests — which is why the regressions now exist.
+
+### T-19 · A target re-parsed by the platform opener ✅
+
+Dispatch hands each approved target to the platform opener as one argv
+element, but a program may re-parse its own command line. `explorer.exe`,
+the opener on Windows, splits an unquoted command line at commas and obeys
+its switches there: `https://a.example/x,/root,\\host\share` — a valid
+`https` target, SAFE-tier, shown as a web link — made Explorer open
+`\\host\share` instead of the browser, connecting to that host over SMB.
+
+**Defenses**: on Windows each argument to `explorer.exe` is passed as one
+quoted token (Explorer then takes it whole, and the browser receives the
+URL unchanged), and a target containing `"`, which could end the quoting,
+is refused at launch. Verified against Explorer on Windows 11 with a v0.5.1
+build, which opened the folder, and a v0.5.2 build, which did not (closed
+in v0.5.2).
 
 ### T-13 · Hostile handler registration 📋
 

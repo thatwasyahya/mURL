@@ -627,7 +627,7 @@ pub fn validate_target(kind: &Kind, target: &str) -> std::result::Result<(), Str
         Kind::RemoteDesktop => validate_remote_desktop_target(target),
         Kind::Geo => validate_geo_target(target),
         Kind::Mailto => validate_mailto_target(target),
-        Kind::Custom(_) => Ok(()), // charset/length already enforced generically
+        Kind::Custom(_) => validate_custom_target(target),
     }
 }
 
@@ -856,17 +856,23 @@ fn validate_web_target(target: &str) -> std::result::Result<(), String> {
 /// credentials. Hence no target may start with two separators, and a `~/`
 /// path may have no empty segment: expansion pushes each segment onto the
 /// home directory, and a segment that is itself a UNC path replaces it.
+///
+/// A drive letter replaces it too: on Windows `~/Z:\x` expands to `Z:\x`,
+/// and `~/Z:x` to a path on drive `Z:`, while the prompt shows `~/…`. So no
+/// segment of a `~/` path may begin with a drive designator.
 fn validate_path_target(target: &str) -> std::result::Result<(), String> {
-    let is_sep = |c: char| c == '/' || c == '\\';
-    if target.starts_with(is_sep) && target[1..].starts_with(is_sep) {
+    if is_network_path(target) {
         return Err("network (UNC) paths are forbidden in path targets".into());
     }
     if let Some(rest) = target.strip_prefix("~/").filter(|r| !r.is_empty()) {
         // `~/` itself and a trailing separator (`~/projects/`) are the only
         // empty segments allowed.
-        let rest = rest.strip_suffix(is_sep).unwrap_or(rest);
-        if rest.split(is_sep).any(str::is_empty) {
+        let rest = rest.strip_suffix(is_separator).unwrap_or(rest);
+        if rest.split(is_separator).any(str::is_empty) {
             return Err("empty segments are forbidden in `~/` path targets".into());
+        }
+        if rest.split(is_separator).any(starts_with_drive) {
+            return Err("drive letters (`Z:`) are forbidden inside `~/` path targets".into());
         }
     }
     let body = if target == "~" {
@@ -893,6 +899,42 @@ fn validate_path_target(target: &str) -> std::result::Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// `custom:<name>` targets mean whatever the user's registered handler makes
+/// of them, so their syntax is free-form. Two shapes are refused anyway,
+/// because they change how a handler reads the target rather than what it
+/// opens: a leading `-` arrives as a command-line option (the same rule as
+/// an ssh host), and two leading separators are a UNC path, which a handler
+/// that opens paths would connect to before showing anything.
+fn validate_custom_target(target: &str) -> std::result::Result<(), String> {
+    if target.starts_with('-') {
+        return Err("must not start with `-` (it would read as an option to the handler)".into());
+    }
+    if is_network_path(target) {
+        return Err("network (UNC) paths are forbidden in custom targets".into());
+    }
+    Ok(())
+}
+
+fn is_separator(c: char) -> bool {
+    c == '/' || c == '\\'
+}
+
+/// Two leading separators, in any combination: Windows reads `\\host`,
+/// `//host` and `/\host` alike as a UNC or device path.
+fn is_network_path(target: &str) -> bool {
+    let mut chars = target.chars();
+    matches!(
+        (chars.next(), chars.next()),
+        (Some(a), Some(b)) if is_separator(a) && is_separator(b)
+    )
+}
+
+/// `Z:`, `Z:\x`, `Z:x`: a segment Windows reads as a drive.
+fn starts_with_drive(segment: &str) -> bool {
+    let b = segment.as_bytes();
+    b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':'
 }
 
 #[cfg(test)]
@@ -1078,6 +1120,42 @@ mod tests {
             ] {
                 assert!(!target_ok(kind, bad), "{kind} {bad} must be refused");
             }
+        }
+    }
+
+    #[test]
+    fn home_paths_refuse_drive_letters() {
+        for kind in ["file", "dir", "terminal"] {
+            assert!(target_ok(kind, "~/notes/2026:10.txt"), "{kind}");
+            assert!(target_ok(kind, "~/a/ab:c"), "{kind}");
+            // Each of these expands to a path on drive Z: under Windows.
+            for bad in [
+                r"~/Z:\\x",
+                "~/Z:/x",
+                "~/Z:x",
+                "~/z:",
+                r"~/projects\\Z:\\x",
+                "~/projects/C:/Windows",
+            ] {
+                assert!(!target_ok(kind, bad), "{kind} {bad} must be refused");
+            }
+        }
+    }
+
+    #[test]
+    fn custom_targets_refuse_options_and_network_paths() {
+        assert!(target_ok("custom:vscode", "vscode://file/home/u/project"));
+        assert!(target_ok("custom:editor", "/home/u/project"));
+        assert!(target_ok("custom:editor", r"C:\\Users\\u\\project"));
+        assert!(target_ok("custom:jira", "PROJ-123"));
+        for bad in [
+            "--install-extension=evil.vsix",
+            "-x",
+            r"\\\\host\\share",
+            "//host/share",
+            r"/\\host\\share",
+        ] {
+            assert!(!target_ok("custom:editor", bad), "{bad} must be refused");
         }
     }
 

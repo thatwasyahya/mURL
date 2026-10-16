@@ -64,7 +64,7 @@ impl RemoteFetcher for HttpsFetcher {
         self.trace(&format!("fetching {url}"));
         let agent = ureq::AgentBuilder::new()
             .timeout(Duration::from_secs(limits.fetch_timeout_secs))
-            .redirects(limits.max_redirects)
+            .redirects(ureq_redirects(limits.max_redirects))
             // Redirects are off unless config turns them on; even then, an
             // https fetch must not be downgraded to plain http.
             .https_only(https)
@@ -88,6 +88,17 @@ impl RemoteFetcher for HttpsFetcher {
             }
             Err(e) => Err(Error::Fetch(format!("{url}: {e}"))),
         }
+    }
+}
+
+/// The value to hand `ureq::AgentBuilder::redirects` so that exactly
+/// `max_redirects` redirects are followed. ureq 2 gives up when the number
+/// of redirects followed so far plus one *reaches* its setting, so
+/// `redirects(n)` follows n − 1 of them; 0 still means none.
+fn ureq_redirects(max_redirects: u32) -> u32 {
+    match max_redirects {
+        0 => 0,
+        n => n.saturating_add(1),
     }
 }
 
@@ -246,8 +257,9 @@ mod tests {
     }
 
     /// Serves one canned HTTP response on a loopback port.
-    fn serve_once(response: &'static str) -> u16 {
+    fn serve_once(response: impl Into<String>) -> u16 {
         use std::io::Write;
+        let response = response.into();
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
         std::thread::spawn(move || {
@@ -286,6 +298,44 @@ mod tests {
             )
             .unwrap();
         assert_eq!(body, b"{}");
+    }
+
+    /// The port of the first of `hops` loopback servers, each redirecting
+    /// to the next, the last of which serves `{}`.
+    fn redirect_chain(hops: usize) -> u16 {
+        let mut port =
+            serve_once("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}");
+        for _ in 0..hops {
+            port = serve_once(format!(
+                "HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:{port}/m.murl.json\r\n\
+                 Content-Length: 0\r\nConnection: close\r\n\r\n"
+            ));
+        }
+        port
+    }
+
+    /// `limits.maxRedirects = n` followed only n − 1 redirects, because
+    /// ureq stops once its count reaches the configured number.
+    #[test]
+    fn max_redirects_follows_exactly_that_many() {
+        for allowed in 1..=3u32 {
+            let limits = Limits {
+                max_redirects: allowed,
+                ..Limits::default()
+            };
+            let url = |port: u16| format!("http://127.0.0.1:{port}/.well-known/murl/x.murl.json");
+
+            let body = HttpsFetcher::default()
+                .fetch(&url(redirect_chain(allowed as usize)), &limits)
+                .unwrap_or_else(|e| panic!("{allowed} allowed, {allowed} taken: {e}"));
+            assert_eq!(body, b"{}");
+
+            let over =
+                HttpsFetcher::default().fetch(&url(redirect_chain(allowed as usize + 1)), &limits);
+            assert!(over.is_err(), "{allowed} allowed, {} taken", allowed + 1);
+        }
+        assert_eq!(ureq_redirects(0), 0);
+        assert_eq!(ureq_redirects(u32::MAX), u32::MAX);
     }
 
     #[test]

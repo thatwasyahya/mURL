@@ -106,6 +106,12 @@ capabilities, only local configuration maps names to programs. Custom kinds
 are uniformly DANGEROUS because the resolver cannot know what a registered
 program does with a target.
 
+The target's syntax is the handler's business, with two exceptions that
+change how any handler reads it: a custom target may not start with `-`,
+which the program would take as a command-line option
+(`--install-extension=…`), nor with two separators, a network path that a
+program opening paths would connect to.
+
 **Choosing between `https` and `custom`**: if the tool has a web URL, use
 `https` — it is SAFE-tier and universally handled. Reach for `custom:` only
 when a native program with its own argument shape is genuinely required.

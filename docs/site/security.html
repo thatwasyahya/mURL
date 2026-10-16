@@ -277,7 +277,10 @@
             ASCII-only and IDN authorities must be punycoded. TLS is required
             (loopback excepted), redirects are not followed, the size cap is
             enforced while reading, and DNS results that resolve only to private,
-            link-local, loopback or CGNAT ranges are refused.</p>
+            link-local, loopback or CGNAT ranges are refused. A manifest fetched
+            over the network may nest only network names, never
+            <code>localhost</code> or <code>murl://local/…</code>, so it cannot
+            reach a port on your machine or probe your local names.</p>
         </div>
         <div class="card">
           <svg class="icon icon-lg"><use href="vendor/icons.svg#i-layers"/></svg>
@@ -291,8 +294,10 @@
           <svg class="icon icon-lg"><use href="vendor/icons.svg#i-terminal"/></svg>
           <h3>Dispatch</h3>
           <p>argv-only process creation; a target containing <code>; rm -rf ~</code>
-            stays one inert argument. Local targets must be absolute and
-            dot-segment free, and are existence-checked before launch. Launching is
+            stays one inert argument, and on Windows reaches
+            <code>explorer.exe</code> quoted, so commas cannot smuggle in its
+            switches. Local targets must be absolute, dot-segment free and not
+            network paths, and are existence-checked before launch. Launching is
             sequential and staggered, which bounds the blast radius of even an
             approved 64-resource plan.</p>
         </div>

@@ -652,8 +652,9 @@ def _validate_target(resource, kind, where, report) -> None:
         "mailto": _target_mailto,
     }.get(kind)
     if checker is None:
-        # custom:<name> — charset and length rules only. The safety of a custom
-        # target comes from the handler the user registered, not from here.
+        # custom:<name> — free-form: what the target means is up to the handler
+        # the user registered.
+        _target_custom(target, where, report)
         return
     checker(target, where, report)
 
@@ -710,6 +711,16 @@ def _target_https(target: str, where: str, report: Report) -> None:
     _check_host_port(authority, where, report, "https target")
 
 
+def _target_custom(target: str, where: str, report: Report) -> None:
+    # Free-form, except two shapes that change how any handler reads the
+    # target: a leading '-' is a command-line option, and two leading
+    # separators are a UNC path that a handler opening paths would connect to.
+    if target.startswith("-"):
+        report.error(f"{where}: custom target {target!r} must not begin with '-'")
+    elif re.match(r"\A[\\/]{2}", target):
+        report.error(f"{where}: network (UNC) custom target {target!r} is forbidden")
+
+
 def _target_path(target: str, where: str, report: Report) -> None:
     # Two leading separators are a UNC or device path on Windows, and
     # checking that one exists already connects to the host it names.
@@ -722,6 +733,11 @@ def _target_path(target: str, where: str, report: Report) -> None:
         rest = re.sub(r"[\\/]\Z", "", target[2:])
         if "" in re.split(r"[\\/]", rest):
             report.error(f"{where}: empty segment in '~/' path target {target!r}")
+            return
+        # A segment starting with a drive (`Z:\x`, `Z:x`) replaces the home
+        # directory on Windows: `~/Z:\x` would open `Z:\x`.
+        if any(re.match(r"[A-Za-z]:", part) for part in re.split(r"[\\/]", rest)):
+            report.error(f"{where}: drive letter inside '~/' path target {target!r}")
             return
     if target == "~" or target.startswith("~/"):
         pass

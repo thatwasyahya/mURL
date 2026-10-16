@@ -629,3 +629,137 @@ fn manifest_count_limit_bounds_fanout() {
         .unwrap_err();
     assert!(matches!(err, Error::LimitExceeded(_)), "{err}");
 }
+
+/// A manifest fetched over the network that nested `murl://localhost:PORT/…`
+/// made mURL send a plain-http request to that port before the consent
+/// prompt. Nesting may not move closer to this machine (spec §6.5).
+#[test]
+fn remote_manifest_cannot_nest_loopback_names() {
+    let env = Env::new("nest-loopback");
+    let root = "https://evil.example/.well-known/murl/p.murl.json";
+    let m = manifest(
+        "P",
+        json!([res("probe", "murl", "murl://localhost:8080/admin")]),
+    );
+    let mut fetcher = MockFetcher::with(root, bytes(&m));
+    fetcher.responses.insert(
+        "http://localhost:8080/.well-known/murl/admin.murl.json".into(),
+        bytes(&manifest("A", json!([res("a", "https", "https://e.com")]))),
+    );
+    let err = env
+        .resolver(Some(&fetcher))
+        .resolve(&murl("murl://evil.example/p"))
+        .unwrap_err();
+    assert!(matches!(err, Error::Resolution(_)), "{err}");
+    assert_eq!(*fetcher.calls.borrow(), vec![root.to_string()]);
+}
+
+/// A manifest fetched over the network that nested `murl://local/<name>`
+/// learned whether the name existed: a missing one ended resolution, a
+/// present one let the next nested fetch reach the server. Both now fail
+/// the same way, before the store is consulted.
+#[test]
+fn remote_manifest_cannot_probe_local_names() {
+    let root = "https://evil.example/.well-known/murl/p.murl.json";
+    let ping = "https://evil.example/.well-known/murl/ping.murl.json";
+    let m = manifest(
+        "P",
+        json!([
+            res("probe", "murl", "murl://local/payroll"),
+            {"id": "ping", "kind": "murl", "target": "murl://evil.example/ping", "dependsOn": ["probe"]},
+        ]),
+    );
+    let ping_manifest = manifest("Ping", json!([res("x", "https", "https://e.com/x")]));
+    let mut messages = Vec::new();
+    for present in [false, true] {
+        let env = Env::new(&format!("nest-local-{present}"));
+        if present {
+            let secret = manifest("Payroll", json!([res("s", "https", "https://e.com/s")]));
+            env.add_local("murl://local/payroll", &bytes(&secret));
+        }
+        let mut fetcher = MockFetcher::with(root, bytes(&m));
+        fetcher.responses.insert(ping.into(), bytes(&ping_manifest));
+        let err = env
+            .resolver(Some(&fetcher))
+            .resolve(&murl("murl://evil.example/p"))
+            .unwrap_err();
+        assert!(matches!(err, Error::Resolution(_)), "{err}");
+        assert_eq!(*fetcher.calls.borrow(), vec![root.to_string()]);
+        messages.push(err.to_string());
+    }
+    assert_eq!(
+        messages[0], messages[1],
+        "the outcome must not depend on the store"
+    );
+}
+
+#[test]
+fn nesting_may_move_away_from_this_machine() {
+    let leaf = manifest("Leaf", json!([res("x", "https", "https://e.com/x")]));
+    let dev = "http://localhost:8080/.well-known/murl/dev.murl.json";
+    let team = "https://example.com/.well-known/murl/team.murl.json";
+
+    // The local store may nest loopback and network names.
+    let env = Env::new("nest-outward");
+    env.add_local(
+        "murl://local/p",
+        &bytes(&manifest(
+            "P",
+            json!([
+                res("dev", "murl", "murl://localhost:8080/dev"),
+                res("team", "murl", "murl://example.com/team"),
+            ]),
+        )),
+    );
+    let mut fetcher = MockFetcher::with(dev, bytes(&leaf));
+    fetcher.responses.insert(
+        team.into(),
+        bytes(&manifest(
+            "T",
+            json!([res("y", "https", "https://e.com/y")]),
+        )),
+    );
+    let r = env
+        .resolver(Some(&fetcher))
+        .resolve(&murl("murl://local/p"))
+        .unwrap();
+    assert_eq!(r.nodes.len(), 3);
+
+    // A loopback server may nest loopback and network names, not local ones.
+    let env = Env::new("nest-from-loopback");
+    let root = "http://localhost:8080/.well-known/murl/root.murl.json";
+    let mut fetcher = MockFetcher::with(
+        root,
+        bytes(&manifest(
+            "R",
+            json!([
+                res("dev", "murl", "murl://localhost:8080/dev"),
+                res("team", "murl", "murl://example.com/team"),
+            ]),
+        )),
+    );
+    fetcher.responses.insert(dev.into(), bytes(&leaf));
+    fetcher.responses.insert(
+        team.into(),
+        bytes(&manifest(
+            "T",
+            json!([res("y", "https", "https://e.com/y")]),
+        )),
+    );
+    let r = env
+        .resolver(Some(&fetcher))
+        .resolve(&murl("murl://localhost:8080/root"))
+        .unwrap();
+    assert_eq!(r.nodes.len(), 3);
+
+    let env = Env::new("nest-local-from-loopback");
+    let fetcher = MockFetcher::with(
+        root,
+        bytes(&manifest("R", json!([res("p", "murl", "murl://local/p")]))),
+    );
+    let err = env
+        .resolver(Some(&fetcher))
+        .resolve(&murl("murl://localhost:8080/root"))
+        .unwrap_err();
+    assert!(matches!(err, Error::Resolution(_)), "{err}");
+}

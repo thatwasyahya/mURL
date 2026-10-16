@@ -6,7 +6,7 @@ no update checks**, and the project runs no server that the software
 contacts. The mURL project collects nothing about you.
 
 What follows is exactly what does leave your device, when, and to whom. It
-describes mURL 0.5.1: the `murl` command and, where it is installed,
+describes mURL 0.5.2: the `murl` command and, where it is installed,
 `murl-daemon`. Changes to this page are recorded in the repository history.
 
 ## What leaves your device
@@ -36,8 +36,15 @@ you. `--offline` makes no request at all.
 **Where to.** Only to the host named in each address:
 `murl://example.com/team/onboarding` is fetched from
 `https://example.com/.well-known/murl/team/onboarding.murl.json`. A nested
-mURL can name any host, including `localhost`. Whoever runs that server, not
+mURL can name any other host on the network. Whoever runs that server, not
 the mURL project, receives the request and decides what to do with it.
+
+A manifest downloaded from the network cannot nest an address on your own
+computer: not `localhost`, `127.0.0.1` or `*.localhost`, and not
+`murl://local/…`. mURL refuses such a manifest before looking anything up,
+so it neither sends a request to a port on your computer nor tells that
+server which local names you have. A manifest served from `localhost` may
+nest `localhost` addresses but not `murl://local/…` names.
 
 **What is sent.** A lookup of the host name through your system's resolver
 (for a name such as `printer` or `printer.local`, your system may ask your
@@ -46,7 +53,7 @@ local network), then this HTTPS request:
 ```http
 GET /.well-known/murl/team/onboarding.murl.json HTTP/1.1
 Host: example.com
-User-Agent: murl/0.5.1
+User-Agent: murl/0.5.2
 Accept: application/murl+json, application/json
 ```
 
@@ -92,11 +99,14 @@ you approve a file, folder or terminal, mURL checks that the path exists,
 and on a network drive or a mounted share that check reaches the share's
 server.
 
-A manifest may not point a file, folder or terminal at a network path such
-as `\\server\share` or `//server/share`: no target may start with two
-slashes or backslashes. Paths inside shares you connected yourself are
-still allowed, such as a mapped drive on Windows, or on Linux and macOS a
-mounted share or an automounter path like `/net/…`.
+A manifest may not point a file, folder, terminal or `custom:` target at a
+network path such as `\\server\share` or `//server/share`: no such target
+may start with two slashes or backslashes. Paths inside shares you
+connected yourself are still allowed, such as a mapped drive on Windows,
+or on Linux and macOS a mounted share or an automounter path like `/net/…`.
+On Windows, mURL gives `explorer.exe` each target as a single quoted
+argument, so text inside a web address cannot make Explorer open a network
+share instead.
 
 ### Clickable links
 

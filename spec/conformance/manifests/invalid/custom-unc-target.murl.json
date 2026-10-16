@@ -1,0 +1,11 @@
+{
+  "murlVersion": "0.2",
+  "name": "Custom target on a network share",
+  "resources": [
+    {
+      "id": "editor",
+      "kind": "custom:editor",
+      "target": "\\\\fileserver.example\\share\\project"
+    }
+  ]
+}
