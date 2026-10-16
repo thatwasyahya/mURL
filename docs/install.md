@@ -29,13 +29,13 @@ worse than a short one:
 | Homebrew | **published** — `brew tap thatwasyahya/murl && brew install murl` ([tap](https://github.com/thatwasyahya/homebrew-murl)) |
 | crates.io | **published** — `cargo install murl-cli` (and `murl-daemon`) |
 | Scoop | **published** — `scoop bucket add murl https://github.com/thatwasyahya/scoop-murl && scoop install murl` |
-| winget | **submitted, all checks green** — [PR #428273](https://github.com/microsoft/winget-pkgs/pull/428273), including the 31-minute Windows installation test; awaiting maintainer review |
+| winget | **published** — `winget install thatwasyahya.murl` |
 | Nix | **flake written, not submitted** — [packaging/nix/](../packaging/nix/) |
 | AUR | **blocked upstream** — new AUR account registration is paused while Arch deals with automated signups; the PKGBUILD is ready in [packaging/aur/](../packaging/aur/) |
 
 ## cargo install from git
 
-The shortest path if you have a Rust toolchain (1.75 or newer):
+The shortest path if you have a Rust toolchain (1.88 or newer):
 
 ```bash
 cargo install --git https://github.com/thatwasyahya/mURL --tag v0.5.1 murl-cli
@@ -51,7 +51,8 @@ Pin the tag. `--branch main` tracks a moving target, and in a pre-1.0 project
 that is a genuine risk rather than a theoretical one — minor versions may
 break anything.
 
-mURL is not on crates.io yet, so there is no plain `cargo install murl`.
+On crates.io the CLI is the `murl-cli` crate (see below); there is no crate
+called `murl`.
 
 ## Build from source
 
@@ -139,10 +140,9 @@ it.
 
 ## Package managers
 
-None of these are live yet. The manifests exist and are reviewable in
-[packaging/](../packaging/), together with a list of exactly what a human has
-to fill in before publishing (hashes, tap repository, winget PR). The
-commands below are what they will be, not what works now.
+crates.io, Homebrew, Scoop and winget are live; AUR and Nix are not yet (see
+the table at the top). The manifests are reviewable in
+[packaging/](../packaging/).
 
 ### crates.io (any platform with a Rust toolchain)
 
@@ -163,11 +163,13 @@ brew tap thatwasyahya/murl
 brew install murl
 ```
 
-Installs both `murl` and `murl-daemon`. On macOS the daemon is not optional:
-a Launch Services activation has no controlling terminal, so without it
-consent can only refuse. Start it with:
+Installs `murl` only: `murl-daemon` is not in the release archives, so the
+formula does not install it. On macOS you will want it, because a Launch
+Services activation has no controlling terminal, so without the daemon
+consent can only refuse. Install and start it with:
 
 ```bash
+cargo install murl-daemon
 murl-daemon service install    # then follow the printed launchctl line
 ```
 
@@ -182,9 +184,10 @@ scoop bucket add murl https://github.com/thatwasyahya/scoop-murl
 scoop install murl
 ```
 
-x86_64 only. You can point Scoop at the manifest in a checkout today to try
-the packaging itself — `scoop install .\packaging\scoop\murl.json` — though it
-will stop on the placeholder hash, which is what the placeholder is for.
+x86_64 only. The bucket's manifest is a copy of
+[packaging/scoop/murl.json](../packaging/scoop/murl.json), so
+`scoop install .\packaging\scoop\murl.json` installs the same thing from a
+checkout.
 
 ### winget (Windows)
 
@@ -192,9 +195,9 @@ will stop on the placeholder hash, which is what the placeholder is for.
 winget install thatwasyahya.murl
 ```
 
-The manifest in `packaging/winget/` is a template that has never been
-submitted. A winget submission needs a public repository and a human review,
-so this is the channel furthest from working.
+x64 only. From the winget community repository, starting with 0.5.1. Each
+new version goes through a reviewed pull request there, so it can reach
+winget a day or more after the GitHub release.
 
 ### AUR (Arch Linux)
 

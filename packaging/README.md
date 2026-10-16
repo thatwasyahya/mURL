@@ -1,19 +1,18 @@
 # Packaging
 
-Manifests for the OS package managers, plus the macOS app bundle. **None of
-these are published yet.** Every file here is written against release
-`v0.4.0` and carries placeholder values that a human has to replace before it
-can go anywhere; the user-facing page that says which channels actually work
-today is [docs/install.md](../docs/install.md).
+Manifests for the OS package managers, plus the macOS app bundle. Every file
+here is written against release `v0.5.1` with its real published hashes;
+the status below says which channels are live, and the user-facing page is
+[docs/install.md](../docs/install.md).
 
 They live in the repository rather than only in the tap/bucket/AUR repos so
 that a release can be prepared in one place, reviewed like the rest of the
 code, and diffed against what was published.
 
-## Status, 2026-09-02
+## Status, 2026-10-16
 
 * **crates.io** — published: `murl-core`, `murl-net`, `murl-daemon`,
-  `murl-cli`, all 0.5.0.
+  `murl-cli`, all 0.5.1.
 * **Homebrew** — published at
   [thatwasyahya/homebrew-murl](https://github.com/thatwasyahya/homebrew-murl);
   the formula there is a copy of `homebrew/murl.rb`, so edit this one.
@@ -23,11 +22,12 @@ code, and diffed against what was published.
 * **Scoop** - published at
   [thatwasyahya/scoop-murl](https://github.com/thatwasyahya/scoop-murl):
   `scoop bucket add murl https://github.com/thatwasyahya/scoop-murl`.
-* **winget** - submitted as
-  [PR #428273](https://github.com/microsoft/winget-pkgs/pull/428273); the
-  whole Azure pipeline is green, including Installers Scan and the
-  31-minute Installation Validation that actually installs the package on
-  Windows. Awaiting maintainer review, which is a queue, not a blocker.
+* **winget** - published: `winget install thatwasyahya.murl`. The first
+  version in the community repository is 0.5.1, merged on 2026-10-15 as
+  [PR #428273](https://github.com/microsoft/winget-pkgs/pull/428273).
+  The moderator asked for a privacy policy before approving, which is
+  where [PRIVACY.md](../PRIVACY.md) and the manifest's `PrivacyUrl` come
+  from.
 
   Worth remembering for next time: the first submission failed
   `02. Manifest Validation` because `NestedInstallerFiles` was at
@@ -45,7 +45,7 @@ code, and diffed against what was published.
 | `scoop/murl.json` | Scoop bucket (Windows) | `murl.exe` | release archive, x86_64 only |
 | `aur/PKGBUILD` | AUR package `murl` (Arch Linux) | `murl`, `murl-daemon` | the git tag |
 | `nix/flake.nix` | Nix flake | `murl`, `murl-daemon` | the source tree |
-| `winget/*.yaml` | winget (submitted, PR #428273) | `murl.exe` | release archive, x64 only |
+| `winget/*.yaml` | winget community repository | `murl.exe` | release archive, x64 only |
 | `macos/` | macOS `.app` bundle for scheme registration | `murl` | the source tree |
 
 Two asymmetries are deliberate and worth knowing before you edit anything:
@@ -167,52 +167,20 @@ repository-layout decision, so it is not made here.
 
 ### winget
 
-The two files in `winget/` are a **template**. They have never been validated
-against `microsoft/winget-pkgs` and nothing has been submitted.
+The three files in `winget/` are the manifests that were merged into
+`microsoft/winget-pkgs` for 0.5.1. For a new version:
 
-A submission needs a third file that is not committed here, because it
-encodes publishing decisions (author line, tags, support URL, moderation
-description) that have not been made:
+1. Bump `PackageVersion` in all three, and `ReleaseDate`, `InstallerUrl`,
+   `RelativeFilePath` and `InstallerSha256` in the installer manifest.
+2. Run `python3 packaging/winget/validate.py`, then
+   `winget validate --manifest packaging\winget` on Windows.
+3. Open a PR to `microsoft/winget-pkgs` adding the three files under
+   `manifests/t/thatwasyahya/murl/<version>/`.
 
-```yaml
-# thatwasyahya.murl.locale.en-US.yaml
-PackageIdentifier: thatwasyahya.murl
-PackageVersion: 0.5.0
-PackageLocale: en-US
-Publisher: FILL IN
-PublisherUrl: https://github.com/thatwasyahya
-PublisherSupportUrl: https://github.com/thatwasyahya/mURL/issues
-Author: FILL IN
-PackageName: murl
-PackageUrl: https://github.com/thatwasyahya/mURL
-License: MIT OR Apache-2.0
-LicenseUrl: https://github.com/thatwasyahya/mURL/blob/v0.4.0/LICENSE-MIT
-Copyright: FILL IN
-ShortDescription: Resolve one murl:// name to a whole set of resources, under consent
-Description: |-
-  mURL is an experimental OS-level addressing primitive. One identifier
-  (murl://authority/name) resolves to a JSON manifest describing a set of
-  resources, which are classified by risk, shown to you, consented to, and
-  then dispatched to ordinary handlers. It is a reference implementation of
-  a proposed primitive, not a standard.
-ReleaseNotesUrl: https://github.com/thatwasyahya/mURL/releases/tag/v0.4.0
-Tags:
-  - cli
-  - uri
-  - developer-tools
-ManifestType: defaultLocale
-ManifestVersion: 1.6.0
-```
-
-Then:
-
-1. Fill in the `InstallerSha256`.
-2. `winget validate --manifest packaging\winget` and
-   `winget install --manifest packaging\winget` on a real Windows machine.
-3. Open a PR to `microsoft/winget-pkgs` adding all three files under
-   `manifests/t/thatwasyahya/murl/0.5.0/`. Their review is a human one and
-   will ask about the publisher identity — a private repository is unlikely
-   to be accepted, so this is blocked on the repository going public anyway.
+Keep `PrivacyUrl`: the moderators require a privacy policy for software
+that sends data off the device. Avoid wording in `Description` that trips
+their keyword checks; "explicit" set off Policy-Test-2.7 on the first
+submission.
 
 ### macOS bundle
 
