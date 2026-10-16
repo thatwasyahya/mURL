@@ -5,18 +5,18 @@
 #     brew tap thatwasyahya/murl
 #     brew install murl
 #
-# Checksums below are the real published v0.5.1 values, taken from the
+# Checksums below are the real published v0.5.2 values, taken from the
 # .sha256 files the release workflow uploads. On the next release they
 # must be refreshed — see RELEASING.md.
 # The release workflow uploads a `.sha256` file next to each archive, so:
 #
-#     curl -sL https://github.com/thatwasyahya/mURL/releases/download/v0.5.1/\
-#     murl-v0.5.1-aarch64-apple-darwin.tar.gz.sha256
+#     curl -sL https://github.com/thatwasyahya/mURL/releases/download/v0.5.2/\
+#     murl-v0.5.2-aarch64-apple-darwin.tar.gz.sha256
 #
 # prints "<hash>  <filename>" — the hash is the first field. For the source
 # tarball used by the build-from-source arms, compute it yourself:
 #
-#     curl -sL https://github.com/thatwasyahya/mURL/archive/refs/tags/v0.5.1.tar.gz \
+#     curl -sL https://github.com/thatwasyahya/mURL/archive/refs/tags/v0.5.2.tar.gz \
 #       | shasum -a 256
 #
 # Installing with an unreplaced placeholder fails loudly on the checksum,
@@ -25,7 +25,7 @@
 class Murl < Formula
   desc "Resolve one murl:// name to a whole set of resources, under consent"
   homepage "https://github.com/thatwasyahya/mURL"
-  version "0.5.1"
+  version "0.5.2"
   license any_of: ["MIT", "Apache-2.0"]
   head "https://github.com/thatwasyahya/mURL.git", branch: "main"
 
@@ -36,28 +36,28 @@ class Murl < Formula
   # rather than only where a prebuilt archive happens to exist.
   on_macos do
     on_arm do
-      url "https://github.com/thatwasyahya/mURL/releases/download/v0.5.1/murl-v0.5.1-aarch64-apple-darwin.tar.gz"
-      sha256 "fe641171b9c1fc994312ef4a76f4dbbba7737ae095c5a70381b947d93e0f2cdb" # aarch64-apple-darwin
+      url "https://github.com/thatwasyahya/mURL/releases/download/v0.5.2/murl-v0.5.2-aarch64-apple-darwin.tar.gz"
+      sha256 "d413930632271d41829856f26d1745f90d3c7773c8672aa0f2288db92d752738" # aarch64-apple-darwin
     end
 
     on_intel do
       # No x86_64-apple-darwin archive is published; build from source.
-      url "https://github.com/thatwasyahya/mURL/archive/refs/tags/v0.5.1.tar.gz"
-      sha256 "2c9472a6b03bc8fbc1878dda91d3213fb9f2d8f33e8f7bc3fa28dd5cb7ecacb3" # source tarball
+      url "https://github.com/thatwasyahya/mURL/archive/refs/tags/v0.5.2.tar.gz"
+      sha256 "71c74806ad6916a62e586eb7a8be85cccb9adee79ae90c0d5bd8f4473c0c9deb" # source tarball
       depends_on "rust" => :build
     end
   end
 
   on_linux do
     on_intel do
-      url "https://github.com/thatwasyahya/mURL/releases/download/v0.5.1/murl-v0.5.1-x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "e4fd780cac71dc1b9fcaeff17a3f519b16f13399ef280b245051edf3fd1e781b" # x86_64-unknown-linux-gnu
+      url "https://github.com/thatwasyahya/mURL/releases/download/v0.5.2/murl-v0.5.2-x86_64-unknown-linux-gnu.tar.gz"
+      sha256 "26120fb192aa9d9b7214330cc7f594c26f550f3d74cd7129cbfc3ea2d9093269" # x86_64-unknown-linux-gnu
     end
 
     on_arm do
       # No aarch64-unknown-linux-gnu archive is published; build from source.
-      url "https://github.com/thatwasyahya/mURL/archive/refs/tags/v0.5.1.tar.gz"
-      sha256 "2c9472a6b03bc8fbc1878dda91d3213fb9f2d8f33e8f7bc3fa28dd5cb7ecacb3" # source tarball
+      url "https://github.com/thatwasyahya/mURL/archive/refs/tags/v0.5.2.tar.gz"
+      sha256 "71c74806ad6916a62e586eb7a8be85cccb9adee79ae90c0d5bd8f4473c0c9deb" # source tarball
       depends_on "rust" => :build
     end
   end

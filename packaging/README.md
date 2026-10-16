@@ -1,7 +1,7 @@
 # Packaging
 
 Manifests for the OS package managers, plus the macOS app bundle. Every file
-here is written against release `v0.5.1` with its real published hashes;
+here is written against release `v0.5.2` with its real published hashes;
 the status below says which channels are live, and the user-facing page is
 [docs/install.md](../docs/install.md).
 
@@ -67,7 +67,7 @@ Two asymmetries are deliberate and worth knowing before you edit anything:
 
 ### Everywhere: the version
 
-These files hardcode `0.5.1` / `v0.4.0` in URLs, `extract_dir`, and the
+These files hardcode `0.5.2` / `v0.4.0` in URLs, `extract_dir`, and the
 winget `RelativeFilePath`. Bumping a release means bumping it in:
 
 `homebrew/murl.rb` (`version`, four URLs) · `scoop/murl.json` (`version`,
@@ -167,8 +167,9 @@ repository-layout decision, so it is not made here.
 
 ### winget
 
-The three files in `winget/` are the manifests that were merged into
-`microsoft/winget-pkgs` for 0.5.1. For a new version:
+The three files in `winget/` are the manifests for 0.5.2, the version to
+submit to `microsoft/winget-pkgs` (0.5.1 was the first merged). For a new
+version:
 
 1. Bump `PackageVersion` in all three, and `ReleaseDate`, `InstallerUrl`,
    `RelativeFilePath` and `InstallerSha256` in the installer manifest.
