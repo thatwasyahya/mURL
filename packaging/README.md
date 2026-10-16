@@ -12,7 +12,7 @@ code, and diffed against what was published.
 ## Status, 2026-10-16
 
 * **crates.io** — published: `murl-core`, `murl-net`, `murl-daemon`,
-  `murl-cli`, all 0.5.1.
+  `murl-cli`, all 0.5.2.
 * **Homebrew** — published at
   [thatwasyahya/homebrew-murl](https://github.com/thatwasyahya/homebrew-murl);
   the formula there is a copy of `homebrew/murl.rb`, so edit this one.
@@ -27,7 +27,9 @@ code, and diffed against what was published.
   [PR #428273](https://github.com/microsoft/winget-pkgs/pull/428273).
   The moderator asked for a privacy policy before approving, which is
   where [PRIVACY.md](../PRIVACY.md) and the manifest's `PrivacyUrl` come
-  from.
+  from. 0.5.2 followed on 2026-10-16 as
+  [PR #454111](https://github.com/microsoft/winget-pkgs/pull/454111),
+  submitted with `wingetcreate` (see below).
 
   Worth remembering for next time: the first submission failed
   `02. Manifest Validation` because `NestedInstallerFiles` was at
@@ -167,16 +169,25 @@ repository-layout decision, so it is not made here.
 
 ### winget
 
-The three files in `winget/` are the manifests for 0.5.2, the version to
-submit to `microsoft/winget-pkgs` (0.5.1 was the first merged). For a new
-version:
+The three files in `winget/` are the manifests for 0.5.2, as merged into
+`microsoft/winget-pkgs`. For a new version:
 
 1. Bump `PackageVersion` in all three, and `ReleaseDate`, `InstallerUrl`,
    `RelativeFilePath` and `InstallerSha256` in the installer manifest.
-2. Run `python3 packaging/winget/validate.py`, then
-   `winget validate --manifest packaging\winget` on Windows.
-3. Open a PR to `microsoft/winget-pkgs` adding the three files under
-   `manifests/t/thatwasyahya/murl/<version>/`.
+2. Run `python3 packaging/winget/validate.py`. On Windows, copy the three
+   `.yaml` files to a folder of their own (`winget validate` refuses a
+   folder that also holds `validate.py`) and run
+   `winget validate --manifest <folder>`.
+3. Bring the fork `thatwasyahya/winget-pkgs` up to date with "Sync fork"
+   on GitHub. `wingetcreate` tries to sync it itself, but its token may
+   not change workflow files, so it fails whenever upstream has changed
+   `.github/workflows` since the last sync.
+4. In Windows PowerShell, with `wingetcreate` installed
+   (`winget install --id Microsoft.WingetCreate --exact --source winget`):
+   `wingetcreate submit --prtitle "New version: thatwasyahya.murl version <version>" <folder>`.
+   It signs in to GitHub through the browser, pushes a branch to the fork
+   and opens the PR. The validation pipeline then runs ten checks, and a
+   moderator approves before the bot merges.
 
 Keep `PrivacyUrl`: the moderators require a privacy policy for software
 that sends data off the device. Avoid wording in `Description` that trips
